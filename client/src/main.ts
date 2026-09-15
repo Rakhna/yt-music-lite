@@ -812,4 +812,30 @@ window.addEventListener('pywebviewready', () => {
   if ((window as any).miniPlayerApp) {
     (window as any).miniPlayerApp.syncWidgetSize();
   }
+
+  // Throttle pywebviewMoveWindow via requestAnimationFrame to avoid flooding IPC messages
+  const pwv = (window as any).pywebview;
+  if (pwv && typeof pwv._jsApiCallback === 'function') {
+    const origCallback = pwv._jsApiCallback.bind(pwv);
+    let moveRafPending = false;
+    let lastMoveArgs: [string, any, any] | null = null;
+
+    pwv._jsApiCallback = function (funcName: string, params: any, id: any) {
+      if (funcName === 'pywebviewMoveWindow') {
+        lastMoveArgs = [funcName, params, id];
+        if (!moveRafPending) {
+          moveRafPending = true;
+          requestAnimationFrame(() => {
+            moveRafPending = false;
+            if (lastMoveArgs) {
+              origCallback(...lastMoveArgs);
+              lastMoveArgs = null;
+            }
+          });
+        }
+        return;
+      }
+      return origCallback(funcName, params, id);
+    };
+  }
 });

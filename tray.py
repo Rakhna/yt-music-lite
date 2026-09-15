@@ -62,16 +62,21 @@ try:
         except Exception as e:
             logger.error(f"safe_resize error: {e}", exc_info=True)
 
+    last_move_time = [0.0]
+
     def safe_move(self, x, y):
+        now = time.time()
+        if now - last_move_time[0] < 0.015:
+            return
+        last_move_time[0] = now
         try:
-            SWP_NOSIZE = 0x0001
-            SWP_NOZORDER = 0x0004
-            SWP_SHOWWINDOW = 0x0040
             scale = getattr(self, "_scale", 1)
             x_phys = int(x * scale)
             y_phys = int(y * scale)
             hwnd = int(self.Handle.ToInt64())
-            windll.user32.SetWindowPos(hwnd, 0, x_phys, y_phys, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW)
+            # SWP_NOSIZE (0x0001) | SWP_NOZORDER (0x0004) | SWP_NOACTIVATE (0x0010) | SWP_NOSENDCHANGING (0x0400)
+            flags = 0x0001 | 0x0004 | 0x0010 | 0x0400
+            windll.user32.SetWindowPos(hwnd, 0, x_phys, y_phys, 0, 0, flags)
         except Exception as e:
             logger.error(f"safe_move error: {e}", exc_info=True)
 
