@@ -169,6 +169,7 @@ class MiniPlayerApp {
     this.toggleVideoBtn.classList.toggle('active', this.showVideo);
 
     this.playerCard.classList.toggle('micro-mode', this.isMicroMode);
+    this.playerCard.classList.toggle('pywebview-drag-region', this.isMicroMode);
     this.toggleMicroBtn.classList.toggle('active', this.isMicroMode);
 
     this.syncWidgetSize();
@@ -782,31 +783,22 @@ class MiniPlayerApp {
   }
 
   private setupDrag() {
-    const handleDragStart = (e: MouseEvent) => {
-      if (e.button !== 0) return;
+    // Prevent pywebview-drag-region from triggering when interacting with buttons, sliders, or inputs
+    const stopDragPropagation = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
-
       if (target.closest('button, input, select, textarea, a, .toolbar-actions, .controls-box, .volume-group, .progress-bar-container, .results-drawer, .auth-box')) {
-        return;
-      }
-
-      if ((window as any).pywebview?.api?.start_drag) {
-        (window as any).pywebview.api.start_drag();
+        e.stopPropagation();
       }
     };
 
     const header = document.getElementById('dragHeader');
     if (header) {
-      header.addEventListener('mousedown', handleDragStart);
+      header.addEventListener('mousedown', stopDragPropagation);
     }
 
     if (this.playerCard) {
-      this.playerCard.addEventListener('mousedown', (e: MouseEvent) => {
-        if (this.isMicroMode) {
-          handleDragStart(e);
-        }
-      });
+      this.playerCard.addEventListener('mousedown', stopDragPropagation);
     }
   }
 }

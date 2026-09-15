@@ -141,20 +141,11 @@ def ensure_server():
     logger.warning("Server health check timed out after 15s")
     return False
 
+is_window_visible = True
+
 class WidgetApi:
     def __init__(self, window_ref):
         self.window_ref = window_ref
-
-    def start_drag(self):
-        try:
-            w = self.window_ref[0]
-            if w and w.native:
-                hwnd = int(w.native.Handle.ToInt64())
-                user32 = ctypes.windll.user32
-                user32.ReleaseCapture()
-                user32.SendMessageW(hwnd, 0x0112, 0xF012, 0)
-        except Exception as e:
-            logger.error(f"Native start_drag failed: {e}", exc_info=True)
 
     def resize_widget(self, width, height):
         try:
@@ -165,10 +156,12 @@ class WidgetApi:
             logger.error(f"resize_widget failed: {e}", exc_info=True)
 
     def minimize_to_tray(self):
+        global is_window_visible
         try:
             w = self.window_ref[0]
             if w:
                 w.hide()
+                is_window_visible = False
         except Exception as e:
             logger.error(f"minimize_to_tray failed: {e}", exc_info=True)
 
@@ -192,6 +185,7 @@ class WidgetApi:
         cleanup_server()
 
 def main():
+    global is_window_visible
     logger.info("Starting YT Mini Player tray runner")
     ensure_server()
 
@@ -214,13 +208,16 @@ def main():
     api = WidgetApi(window_ref)
 
     def toggle_window(icon, item=None):
+        global is_window_visible
         w = window_ref[0]
         if w:
-            if w.visible:
+            if is_window_visible:
                 w.hide()
+                is_window_visible = False
             else:
                 w.show()
                 w.restore()
+                is_window_visible = True
 
     def open_logs(icon, item=None):
         try:
@@ -266,7 +263,7 @@ def main():
     window_ref[0] = window
 
     def on_closing():
-        global is_quitting
+        global is_quitting, is_window_visible
         if is_quitting:
             logger.info("Application quitting, closing window")
             return True
@@ -274,6 +271,7 @@ def main():
         w = window_ref[0]
         if w:
             w.hide()
+            is_window_visible = False
         return False
 
     window.events.closing += on_closing
