@@ -24,13 +24,15 @@ class MiniPlayerApp {
   private showSearch = true;
   private showVideo = true;
   private isMicroMode = false;
+  private isOnTop = true;
 
   // DOM Elements
   private playerCard!: HTMLElement;
   private toggleSearchBtn!: HTMLButtonElement;
   private toggleVideoBtn!: HTMLButtonElement;
   private toggleMicroBtn!: HTMLButtonElement;
-  private popoutBtn!: HTMLButtonElement;
+  private pinBtn!: HTMLButtonElement;
+  private closeWidgetBtn!: HTMLButtonElement;
   private searchBarContainer!: HTMLElement;
   private videoBox!: HTMLElement;
   private videoPlaceholder!: HTMLElement;
@@ -90,7 +92,8 @@ class MiniPlayerApp {
     this.authCodeText = document.getElementById('authCodeText')!;
     this.copyCodeBtn = document.getElementById('copyCodeBtn') as HTMLButtonElement;
     this.authPendingStatus = document.getElementById('authPendingStatus')!;
-    this.popoutBtn = document.getElementById('popoutBtn') as HTMLButtonElement;
+    this.pinBtn = document.getElementById('pinBtn') as HTMLButtonElement;
+    this.closeWidgetBtn = document.getElementById('closeWidgetBtn') as HTMLButtonElement;
     this.searchBarContainer = document.getElementById('searchBarContainer')!;
     this.videoBox = document.getElementById('videoBox')!;
     this.videoPlaceholder = document.getElementById('videoPlaceholder')!;
@@ -166,6 +169,35 @@ class MiniPlayerApp {
 
     this.playerCard.classList.toggle('micro-mode', this.isMicroMode);
     this.toggleMicroBtn.classList.toggle('active', this.isMicroMode);
+
+    this.syncWidgetSize();
+  }
+
+  public syncWidgetSize() {
+    let targetWidth = 320;
+    let targetHeight = 440;
+
+    if (this.isMicroMode) {
+      targetWidth = 280;
+      targetHeight = 66;
+    } else if (!this.showVideo && !this.showSearch) {
+      targetWidth = 320;
+      targetHeight = 185;
+    } else if (!this.showVideo) {
+      targetWidth = 320;
+      targetHeight = 225;
+    } else if (!this.showSearch) {
+      targetWidth = 320;
+      targetHeight = 400;
+    }
+
+    if (!this.isMicroMode && this.resultsDrawer && this.resultsDrawer.style.display === 'flex') {
+      targetHeight = Math.min(500, targetHeight + 140);
+    }
+
+    if ((window as any).pywebview?.api?.resize_widget) {
+      (window as any).pywebview.api.resize_widget(targetWidth, targetHeight);
+    }
   }
 
   private initYouTube() {
@@ -435,22 +467,27 @@ class MiniPlayerApp {
       }
     });
 
-    // Popout Floating Window
-    this.popoutBtn.addEventListener('click', () => {
-      const w = 360;
-      const h = 480;
-      const left = window.screen.width - w - 24;
-      const top = window.screen.height - h - 60;
-      window.open(
-        window.location.href,
-        'YTMusicMini',
-        `width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,resizable=yes`
-      );
+    // Pin on top toggle
+    this.pinBtn.addEventListener('click', () => {
+      this.isOnTop = !this.isOnTop;
+      this.pinBtn.classList.toggle('active', this.isOnTop);
+      if ((window as any).pywebview?.api?.set_on_top) {
+        (window as any).pywebview.api.set_on_top(this.isOnTop);
+      }
     });
 
     // Minimize to System Tray
     document.getElementById('minimizeTrayBtn')?.addEventListener('click', () => {
-      if ((window as any).pywebview && (window as any).pywebview.api) {
+      if ((window as any).pywebview?.api?.minimize_to_tray) {
+        (window as any).pywebview.api.minimize_to_tray();
+      } else {
+        this.toggleMicroBtn.click();
+      }
+    });
+
+    // Close Widget (Hides to Tray)
+    this.closeWidgetBtn.addEventListener('click', () => {
+      if ((window as any).pywebview?.api?.minimize_to_tray) {
         (window as any).pywebview.api.minimize_to_tray();
       } else {
         this.toggleMicroBtn.click();
@@ -494,12 +531,14 @@ class MiniPlayerApp {
       this.clearInputBtn.style.display = 'none';
       this.resultsDrawer.style.display = 'none';
       this.urlInput.focus();
+      this.syncWidgetSize();
     });
 
     // Toggle Results Drawer
     this.toggleResultsBtn.addEventListener('click', () => {
       const isVisible = this.resultsDrawer.style.display === 'flex';
       this.resultsDrawer.style.display = isVisible ? 'none' : 'flex';
+      this.syncWidgetSize();
     });
 
     // Playback buttons
@@ -743,5 +782,12 @@ class MiniPlayerApp {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  new MiniPlayerApp();
+  const app = new MiniPlayerApp();
+  (window as any).miniPlayerApp = app;
+});
+
+window.addEventListener('pywebviewready', () => {
+  if ((window as any).miniPlayerApp) {
+    (window as any).miniPlayerApp.syncWidgetSize();
+  }
 });

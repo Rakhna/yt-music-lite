@@ -20,38 +20,63 @@
   -webkit-font-smoothing: antialiased;
 }
 
-body.mini-app-body {
+html, body.mini-app-body {
   font-family: var(--font);
-  background-color: var(--bg-base);
+  background-color: var(--bg-card);
   color: var(--text-main);
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  min-height: 100vh;
-  padding: 12px;
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
   user-select: none;
 }
 
-/* Main Container */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  scrollbar-width: none;
+}
+
+/* Main Container (Edge-to-Edge Widget) */
 .mini-player-wrapper {
-  width: 100%;
-  max-width: 350px;
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
   background-color: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px;
+  border-radius: 12px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  gap: 8px;
+  box-shadow: none;
+  overflow: hidden;
   transition: all 0.2s ease;
 }
 
-/* Micro Toolbar */
+/* Micro Toolbar (Draggable Header) */
 .mini-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  -webkit-app-region: drag;
+  cursor: grab;
+  user-select: none;
+}
+
+.mini-header:active {
+  cursor: grabbing;
+}
+
+.toolbar-actions,
+.brand-mini,
+.tool-btn,
+input,
+button,
+.slider {
+  -webkit-app-region: no-drag;
 }
 
 .brand-mini {
@@ -490,9 +515,22 @@ body.mini-app-body {
 
 /* MICRO MODE (Ultra Minimalist Pill) */
 .mini-player-wrapper.micro-mode {
-  max-width: 320px;
-  padding: 8px 10px;
-  gap: 6px;
+  padding: 6px 8px;
+  gap: 4px;
+  -webkit-app-region: drag;
+  cursor: grab;
+}
+
+.mini-player-wrapper.micro-mode .mini-track-info,
+.mini-player-wrapper.micro-mode .brand-mini {
+  -webkit-app-region: drag;
+}
+
+.mini-player-wrapper.micro-mode .controls-box,
+.mini-player-wrapper.micro-mode .toolbar-actions,
+.mini-player-wrapper.micro-mode .play-btn,
+.mini-player-wrapper.micro-mode .tool-btn {
+  -webkit-app-region: no-drag;
 }
 
 .mini-player-wrapper.micro-mode .search-collapsible,
