@@ -47,8 +47,24 @@ if hasattr(threading, "excepthook"):
 
 # Apply safety monkeypatch for pywebview WinForms backend on 64-bit Windows
 try:
+    import ctypes
+    from ctypes import windll, wintypes
     import webview.platforms.winforms as wf
-    from ctypes import windll
+
+    user32 = windll.user32
+    user32.SetWindowPos.argtypes = [
+        wintypes.HWND,
+        wintypes.HWND,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        wintypes.UINT,
+    ]
+    user32.SetWindowPos.restype = wintypes.BOOL
+
+    HWND_TOPMOST = wintypes.HWND(-1)
+    HWND_NOTOPMOST = wintypes.HWND(-2)
 
     def safe_resize(self, width, height, fix_point=0):
         try:
@@ -58,7 +74,7 @@ try:
             x = self.Location.X
             y = self.Location.Y
             hwnd = int(self.Handle.ToInt64())
-            windll.user32.SetWindowPos(hwnd, 0, x, y, phys_width, phys_height, 64)
+            user32.SetWindowPos(hwnd, None, x, y, phys_width, phys_height, 0x0004 | 0x0040)
         except Exception as e:
             logger.error(f"safe_resize error: {e}", exc_info=True)
 
@@ -74,9 +90,9 @@ try:
             x_phys = int(x * scale)
             y_phys = int(y * scale)
             hwnd = int(self.Handle.ToInt64())
-            # SWP_NOSIZE (0x0001) | SWP_NOZORDER (0x0004) | SWP_NOACTIVATE (0x0010) | SWP_NOSENDCHANGING (0x0400)
-            flags = 0x0001 | 0x0004 | 0x0010 | 0x0400
-            windll.user32.SetWindowPos(hwnd, 0, x_phys, y_phys, 0, 0, flags)
+            # SWP_NOSIZE (0x0001) | SWP_NOZORDER (0x0004)
+            flags = 0x0001 | 0x0004
+            user32.SetWindowPos(hwnd, None, x_phys, y_phys, 0, 0, flags)
         except Exception as e:
             logger.error(f"safe_move error: {e}", exc_info=True)
 
@@ -174,9 +190,25 @@ class WidgetApi:
         try:
             w = self.window_ref[0]
             if w:
-                w.on_top = bool(on_top)
+                i = wf.BrowserView.instances.get(w.uid)
+                if i:
+                    hwnd = int(i.Handle.ToInt64())
+                    target = HWND_TOPMOST if on_top else HWND_NOTOPMOST
+                    # SWP_NOSIZE (0x0001) | SWP_NOMOVE (0x0002) | SWP_NOACTIVATE (0x0010)
+                    user32.SetWindowPos(hwnd, target, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)
+                    def _sync():
+                        try:
+                            i.TopMost = bool(on_top)
+                        except Exception:
+                            pass
+                    if i.InvokeRequired:
+                        i.BeginInvoke(wf.Func[wf.Type](_sync))
+                    else:
+                        _sync()
+                w._on_top = bool(on_top)
         except Exception as e:
             logger.error(f"set_on_top failed: {e}", exc_info=True)
+        return True
 
     def close_app(self):
         global is_quitting

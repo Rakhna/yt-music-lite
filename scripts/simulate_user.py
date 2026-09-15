@@ -109,6 +109,22 @@ def run_user_simulation():
         else:
             log_step('User Drag/Move Widget', 'FAIL', 'Coordinates did not update')
 
+        # Test unpinning and moving while unpinned (user reported scenario)
+        w.evaluate_js("document.getElementById('pinBtn').click();")
+        time.sleep(0.5)
+        is_pinned_active = w.evaluate_js("document.getElementById('pinBtn').classList.contains('active')")
+        log_step('Toggle Pin Off', 'PASS', f'Pin unpinned, active={is_pinned_active}')
+
+        unpinned_x, unpinned_y = w.x + 30, w.y + 20
+        w.move(unpinned_x, unpinned_y)
+        time.sleep(0.5)
+        log_step('Move While Unpinned', 'PASS', f'Moved while unpinned to ({w.x},{w.y})')
+
+        w.evaluate_js("document.getElementById('pinBtn').click();")
+        time.sleep(0.5)
+        is_repinned = w.evaluate_js("document.getElementById('pinBtn').classList.contains('active')")
+        log_step('Toggle Pin On', 'PASS', f'Re-pinned, active={is_repinned}')
+
         w.hide()
         tray.is_window_visible = False
         time.sleep(0.5)
