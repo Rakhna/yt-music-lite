@@ -77,6 +77,7 @@ class MiniPlayerApp {
     this.initYouTube();
     this.bindEvents();
     this.setupMediaSession();
+    this.setupDrag();
   }
 
   private bindDom() {
@@ -778,6 +779,35 @@ class MiniPlayerApp {
   private updatePlayPauseUI() {
     this.playIcon.style.display = this.isPlaying ? 'none' : 'block';
     this.pauseIcon.style.display = this.isPlaying ? 'block' : 'none';
+  }
+
+  private setupDrag() {
+    const handleDragStart = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      if (target.closest('button, input, select, textarea, a, .toolbar-actions, .controls-box, .volume-group, .progress-bar-container, .results-drawer, .auth-box')) {
+        return;
+      }
+
+      if ((window as any).pywebview?.api?.start_drag) {
+        (window as any).pywebview.api.start_drag();
+      }
+    };
+
+    const header = document.getElementById('dragHeader');
+    if (header) {
+      header.addEventListener('mousedown', handleDragStart);
+    }
+
+    if (this.playerCard) {
+      this.playerCard.addEventListener('mousedown', (e: MouseEvent) => {
+        if (this.isMicroMode) {
+          handleDragStart(e);
+        }
+      });
+    }
   }
 }
 

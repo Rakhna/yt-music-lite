@@ -61,7 +61,6 @@ html, body.mini-app-body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  -webkit-app-region: drag;
   cursor: grab;
   user-select: none;
 }
@@ -76,7 +75,7 @@ html, body.mini-app-body {
 input,
 button,
 .slider {
-  -webkit-app-region: no-drag;
+  cursor: default;
 }
 
 .brand-mini {
@@ -517,20 +516,11 @@ button,
 .mini-player-wrapper.micro-mode {
   padding: 6px 8px;
   gap: 4px;
-  -webkit-app-region: drag;
   cursor: grab;
 }
 
-.mini-player-wrapper.micro-mode .mini-track-info,
-.mini-player-wrapper.micro-mode .brand-mini {
-  -webkit-app-region: drag;
-}
-
-.mini-player-wrapper.micro-mode .controls-box,
-.mini-player-wrapper.micro-mode .toolbar-actions,
-.mini-player-wrapper.micro-mode .play-btn,
-.mini-player-wrapper.micro-mode .tool-btn {
-  -webkit-app-region: no-drag;
+.mini-player-wrapper.micro-mode:active {
+  cursor: grabbing;
 }
 
 .mini-player-wrapper.micro-mode .search-collapsible,
