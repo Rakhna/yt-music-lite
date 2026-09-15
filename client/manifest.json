@@ -1,0 +1,17 @@
+{
+  "name": "YT Music Lite",
+  "short_name": "YTMusicLite",
+  "description": "Reproductor de musica de YouTube ultra eficiente y de bajo consumo",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0e12",
+  "theme_color": "#0d0e12",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "yt-music-lite",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "vite build",
+    "start": "node --optimize-for-size --max-old-space-size=192 server/index.js",
+    "dev:client": "vite",
+    "dev:server": "node --optimize-for-size --max-old-space-size=192 server/index.js",
+    "dev": "vite build && node server/index.js",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.24.0",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@11.24.0",
+  "type": "module",
+  "dependencies": {
+    "@fastify/cors": "^11.3.0",
+    "@fastify/static": "^10.1.3",
+    "fastify": "^5.12.4",
+    "youtubei.js": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.0"
+  }
+}

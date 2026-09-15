@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YT Mini Player</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0d0e12">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body class="mini-app-body">
+  <div id="playerCard" class="mini-player-wrapper">
+    <!-- Top Micro Toolbar -->
+    <header class="mini-header">
+      <div class="brand-mini">
+        <span class="dot-indicator"></span>
+        <span class="brand-name">YT Mini</span>
+      </div>
+
+      <!-- Quick Visibility Toggles -->
+      <div class="toolbar-actions">
+        <button id="toggleSearchBtn" class="tool-btn active" title="Mostrar/Ocultar buscador (/)">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+        </button>
+
+        <button id="toggleVideoBtn" class="tool-btn active" title="Mostrar/Ocultar video (V)">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zm-10-4l6-4-6-4v8z"/>
+          </svg>
+        </button>
+
+        <button id="toggleMicroBtn" class="tool-btn" title="Modo Barra Ultra Compacta (M)">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M19 13H5v-2h14v2z"/>
+          </svg>
+        </button>
+
+        <button id="accountBtn" class="tool-btn" title="Conectar Cuenta de Google">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
+        </button>
+
+        <button id="minimizeTrayBtn" class="tool-btn" title="Minimizar a la bandeja (System Tray)">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M19 13H5v-2h14v2z"/>
+          </svg>
+        </button>
+
+        <button id="popoutBtn" class="tool-btn" title="Abrir en ventana flotante independiente">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Auth / Account Modal (Collapsible) -->
+    <div id="authModal" class="auth-box" style="display: none;">
+      <div class="auth-header">
+        <span id="authBoxTitle">Conectar con Google</span>
+        <button id="closeAuthBtn" class="close-btn">&times;</button>
+      </div>
+      <div id="authContent" class="auth-content">
+        <p class="auth-desc">Vincula tu cuenta en 2 sencillos pasos:</p>
+        <div class="auth-steps">
+          <div>1. Abre <a id="authLink" href="https://www.google.com/device" target="_blank" class="auth-url">google.com/device</a></div>
+          <div>2. Escribe este codigo:</div>
+        </div>
+        <div class="auth-code-box">
+          <span id="authCodeText" class="auth-code">Cargando...</span>
+          <button id="copyCodeBtn" class="copy-btn" title="Copiar codigo">Copiar</button>
+        </div>
+        <div id="authPendingStatus" class="auth-status">Esperando confirmacion...</div>
+      </div>
+    </div>
+
+    <!-- Collapsible Search / URL Bar -->
+    <div id="searchBarContainer" class="search-collapsible">
+      <div class="input-bar">
+        <svg class="search-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+        </svg>
+        <input type="text" id="urlInput" placeholder="Pega enlace de YouTube o busca..." autocomplete="off" spellcheck="false">
+        <button id="clearInputBtn" class="clear-icon" style="display: none;">&times;</button>
+      </div>
+    </div>
+
+    <!-- Collapsible Video Box (Audio only when hidden) -->
+    <div id="videoBox" class="video-preview-box">
+      <div id="yt-player-container"></div>
+      <div id="videoPlaceholder" class="video-placeholder">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="var(--text-sub)">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
+        </svg>
+        <span>Pega un enlace o busca</span>
+      </div>
+    </div>
+
+    <!-- Main Player Strip (Always visible, very reactive) -->
+    <div class="player-main-strip">
+      <!-- Mini Thumb & Track Meta -->
+      <div class="track-info-row">
+        <img id="miniThumb" src="/icon.svg" class="mini-thumb" alt="Cover">
+        <div class="track-info">
+          <div id="trackTitle" class="track-title">Sin reproduccion</div>
+          <div id="trackArtist" class="track-artist">Listo</div>
+        </div>
+      </div>
+
+      <!-- Seek & Time -->
+      <div class="timeline-box">
+        <span id="currentTime" class="time-text">0:00</span>
+        <div class="progress-bar-container">
+          <div class="progress-bg"></div>
+          <div id="bufferedBar" class="progress-buffered"></div>
+          <div id="progressBar" class="progress-fill"></div>
+          <input type="range" id="seekSlider" class="seek-slider" min="0" max="100" value="0" step="0.1">
+        </div>
+        <span id="totalDuration" class="time-text">0:00</span>
+      </div>
+
+      <!-- Core Controls -->
+      <div class="controls-box">
+        <button id="prevBtn" class="ctrl-btn" title="Anterior (P)">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        </button>
+
+        <button id="seekBackBtn" class="ctrl-btn" title="Retroceder 5s (<-)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>
+        </button>
+
+        <button id="playBtn" class="play-btn" title="Reproducir / Pausar (Espacio)">
+          <svg id="playIcon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <svg id="pauseIcon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" style="display: none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        </button>
+
+        <button id="seekFwdBtn" class="ctrl-btn" title="Adelantar 5s (->)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
+        </button>
+
+        <button id="nextBtn" class="ctrl-btn" title="Siguiente (N)">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </button>
+      </div>
+
+      <!-- Bottom Mini Options (Volume & Results Drawer) -->
+      <div class="bottom-strip">
+        <div class="volume-group">
+          <button id="muteBtn" class="mute-btn" title="Silenciar (M)">
+            <svg id="volHighIcon" viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            <svg id="volMutedIcon" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="display: none;"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+          </button>
+          <input type="range" id="volumeSlider" class="vol-slider" min="0" max="100" value="80">
+        </div>
+
+        <button id="toggleResultsBtn" class="toggle-results-btn" title="Mostrar/ocultar resultados">
+          <span id="resultsCountText">Resultados</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Search Results / Quick Queue Panel (Expandable) -->
+    <div id="resultsDrawer" class="results-drawer" style="display: none;">
+      <div id="statusMessage" class="status-msg"></div>
+      <div id="resultsList" class="mini-results-list"></div>
+    </div>
+  </div>
+
+  <!-- YouTube IFrame API Loader -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
