@@ -3,19 +3,15 @@ import sys
 import subprocess
 import atexit
 import time
-import ctypes
-from ctypes import wintypes
 import urllib.request
+import threading
 import pystray
 from PIL import Image
+import webview
 
 PORT = 3000
-SERVER_URL = f"http://localhost:{PORT}"
+SERVER_URL = f"http://127.0.0.1:{PORT}"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-user32 = ctypes.windll.user32
-SW_HIDE = 0
-SW_RESTORE = 9
 
 server_proc = None
 
@@ -33,22 +29,6 @@ def cleanup_server():
 
 atexit.register(cleanup_server)
 
-def get_window_hwnd():
-    found = []
-    def enum_proc(hwnd, lParam):
-        length = user32.GetWindowTextLengthW(hwnd)
-        if length > 0:
-            buf = ctypes.create_unicode_buffer(length + 1)
-            user32.GetWindowTextW(hwnd, buf, length + 1)
-            title = buf.value
-            if "YT Mini Player" in title or "YT Music Lite" in title:
-                found.append(hwnd)
-        return True
-
-    EnumProc = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
-    user32.EnumWindows(EnumProc(enum_proc), 0)
-    return found[0] if found else None
-
 def is_server_online():
     try:
         r = urllib.request.urlopen(f"{SERVER_URL}/api/health", timeout=1)
@@ -64,34 +44,39 @@ def ensure_server():
             cwd=SCRIPT_DIR,
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
         )
-        for _ in range(20):
-            time.sleep(0.3)
+        for _ in range(25):
+            time.sleep(0.2)
             if is_server_online():
                 break
 
-def launch_app_window():
-    user_data_dir = os.path.join(os.environ.get("TEMP", SCRIPT_DIR), "yt-mini-profile")
-    flags = [
-        f'--app="{SERVER_URL}"',
-        '--window-size="370,550"',
-        '--renderer-process-limit=1',
-        '--disable-extensions',
-        '--disable-background-networking',
-        '--disable-component-update',
-        '--disable-sync',
-        '--disable-features=Translate,OptimizationHints,MediaRouter',
-        '--disk-cache-size=10485760',
-        '--media-cache-size=10485760',
-        '--no-default-browser-check',
-        f'--user-data-dir="{user_data_dir}"'
-    ]
-    cmd = f'start msedge.exe {" ".join(flags)}'
-    subprocess.Popen(cmd, shell=True)
+class WidgetApi:
+    def __init__(self, window_ref):
+        self.window_ref = window_ref
+
+    def resize_widget(self, width, height):
+        w = self.window_ref[0]
+        if w:
+            w.resize(int(width), int(height))
+
+    def minimize_to_tray(self):
+        w = self.window_ref[0]
+        if w:
+            w.hide()
+
+    def set_on_top(self, on_top):
+        w = self.window_ref[0]
+        if w:
+            w.on_top = bool(on_top)
+
+    def close_app(self):
+        w = self.window_ref[0]
+        if w:
+            w.destroy()
 
 def main():
     ensure_server()
 
-    # Find which icon is selected (defaults to icon3 if configured)
+    # Find which icon is selected (defaults to icon3)
     icon_choice = "icon3.png"
     pref_file = os.path.join(SCRIPT_DIR, "icon_choice.txt")
     if os.path.exists(pref_file):
@@ -106,43 +91,52 @@ def main():
     else:
         tray_image = Image.new("RGBA", (64, 64), (255, 0, 85, 255))
 
-    is_visible = [True]
+    window_ref = [None]
+    api = WidgetApi(window_ref)
 
     def toggle_window(icon, item=None):
-        hwnd = get_window_hwnd()
-        if not hwnd:
-            launch_app_window()
-            is_visible[0] = True
-            return
-
-        if is_visible[0]:
-            user32.ShowWindow(hwnd, SW_HIDE)
-            is_visible[0] = False
-        else:
-            user32.ShowWindow(hwnd, SW_RESTORE)
-            user32.SetForegroundWindow(hwnd)
-            is_visible[0] = True
+        w = window_ref[0]
+        if w:
+            if w.visible:
+                w.hide()
+            else:
+                w.show()
+                w.restore()
 
     def on_quit(icon, item=None):
-        hwnd = get_window_hwnd()
-        if hwnd:
-            user32.PostMessageW(hwnd, 0x0010, 0, 0) # WM_CLOSE
-        cleanup_server()
         icon.stop()
+        w = window_ref[0]
+        if w:
+            w.destroy()
+        cleanup_server()
         sys.exit(0)
 
     menu = pystray.Menu(
-        pystray.MenuItem("Mostrar / Ocultar", toggle_window, default=True),
+        pystray.MenuItem("Mostrar / Ocultar Widget", toggle_window, default=True),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Salir", on_quit)
     )
 
     icon = pystray.Icon("YT Mini Player", tray_image, "YT Mini Player", menu)
+    threading.Thread(target=icon.run, daemon=True).start()
 
-    if not get_window_hwnd():
-        launch_app_window()
+    window = webview.create_window(
+        title="YT Mini Player",
+        url=SERVER_URL,
+        width=320,
+        height=440,
+        frameless=True,
+        on_top=True,
+        easy_drag=True,
+        js_api=api,
+        background_color='#13161f'
+    )
+    window_ref[0] = window
 
-    icon.run()
+    # Prevent accidental destruction on close; minimize to tray instead
+    window.events.closing += lambda: (window.hide(), False)
+
+    webview.start()
 
 if __name__ == "__main__":
     main()
