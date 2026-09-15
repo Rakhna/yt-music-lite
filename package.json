@@ -10,7 +10,8 @@
     "dev:server": "node --optimize-for-size --max-old-space-size=192 server/index.js",
     "dev": "vite build && node server/index.js",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:user": "python scripts/simulate_user.py"
   },
   "keywords": [],
   "author": "",
