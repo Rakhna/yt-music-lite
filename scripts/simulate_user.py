@@ -90,6 +90,32 @@ def run_user_simulation():
         video_hidden = w.evaluate_js("document.getElementById('videoBox').classList.contains('hidden')")
         log_step('Toggle Video Mode', 'PASS', f'Video hidden={video_hidden}')
 
+        # Test URL Bar Hide & Show
+        w.evaluate_js("document.getElementById('hideUrlBtn').click();")
+        time.sleep(0.5)
+        search_hidden = w.evaluate_js("document.getElementById('searchBarContainer').classList.contains('hidden')")
+        log_step('Hide URL Bar Button', 'PASS' if search_hidden else 'FAIL', f'Search hidden={search_hidden}')
+
+        w.evaluate_js("document.getElementById('toggleSearchBtn').click();")
+        time.sleep(0.5)
+        search_restored = not w.evaluate_js("document.getElementById('searchBarContainer').classList.contains('hidden')")
+        log_step('Restore URL Bar Button', 'PASS' if search_restored else 'FAIL', f'Search restored={search_restored}')
+
+        # Test Autoplay Toggle
+        w.evaluate_js("document.getElementById('autoplayBtn').click();")
+        time.sleep(0.3)
+        auto_off = not w.evaluate_js("document.getElementById('autoplayBtn').classList.contains('active')")
+        log_step('Toggle Autoplay Off', 'PASS' if auto_off else 'FAIL', f'Autoplay active={not auto_off}')
+
+        w.evaluate_js("document.getElementById('autoplayBtn').click();")
+        time.sleep(0.3)
+        auto_on = w.evaluate_js("document.getElementById('autoplayBtn').classList.contains('active')")
+        log_step('Toggle Autoplay On', 'PASS' if auto_on else 'FAIL', f'Autoplay active={auto_on}')
+
+        # Test Copy URL Button
+        copy_btn_exists = w.evaluate_js("document.getElementById('copyUrlBtn') !== null")
+        log_step('Copy URL Button Presence', 'PASS' if copy_btn_exists else 'FAIL', f'Exists={copy_btn_exists}')
+
         w.evaluate_js("document.getElementById('toggleMicroBtn').click();")
         time.sleep(0.5)
         is_micro = w.evaluate_js("document.getElementById('playerCard').classList.contains('micro-mode')")

@@ -20,6 +20,11 @@ class MiniPlayerApp {
   private searchTimeout: number | null = null;
   private searchAbortController: AbortController | null = null;
 
+  // Continuous playback / Autoplay
+  private autoplay = true;
+  private relatedTracks: Track[] = [];
+  private isFetchingRelated = false;
+
   // Visibility states
   private showSearch = true;
   private showVideo = true;
@@ -34,6 +39,9 @@ class MiniPlayerApp {
   private pinBtn!: HTMLButtonElement;
   private closeWidgetBtn!: HTMLButtonElement;
   private searchBarContainer!: HTMLElement;
+  private hideUrlBtn!: HTMLButtonElement;
+  private copyUrlBtn!: HTMLButtonElement;
+  private autoplayBtn!: HTMLButtonElement;
   private videoBox!: HTMLElement;
   private videoPlaceholder!: HTMLElement;
   private urlInput!: HTMLInputElement;
@@ -96,6 +104,9 @@ class MiniPlayerApp {
     this.pinBtn = document.getElementById('pinBtn') as HTMLButtonElement;
     this.closeWidgetBtn = document.getElementById('closeWidgetBtn') as HTMLButtonElement;
     this.searchBarContainer = document.getElementById('searchBarContainer')!;
+    this.hideUrlBtn = document.getElementById('hideUrlBtn') as HTMLButtonElement;
+    this.copyUrlBtn = document.getElementById('copyUrlBtn') as HTMLButtonElement;
+    this.autoplayBtn = document.getElementById('autoplayBtn') as HTMLButtonElement;
     this.videoBox = document.getElementById('videoBox')!;
     this.videoPlaceholder = document.getElementById('videoPlaceholder')!;
     this.urlInput = document.getElementById('urlInput') as HTMLInputElement;
@@ -142,12 +153,18 @@ class MiniPlayerApp {
         this.isMicroMode = savedMicro === 'true';
       }
 
+      const savedAutoplay = localStorage.getItem('mini_autoplay');
+      if (savedAutoplay !== null) {
+        this.autoplay = savedAutoplay === 'true';
+      }
+
       const savedVol = localStorage.getItem('mini_vol');
       if (savedVol !== null) {
         this.volume = parseInt(savedVol, 10);
         this.volumeSlider.value = this.volume.toString();
       }
 
+      this.updateAutoplayUI();
       this.applyVisibilityStates();
     } catch (_) {}
   }
@@ -157,6 +174,7 @@ class MiniPlayerApp {
       localStorage.setItem('mini_show_search', this.showSearch.toString());
       localStorage.setItem('mini_show_video', this.showVideo.toString());
       localStorage.setItem('mini_micro_mode', this.isMicroMode.toString());
+      localStorage.setItem('mini_autoplay', this.autoplay.toString());
       localStorage.setItem('mini_vol', this.volume.toString());
     } catch (_) {}
   }
@@ -181,7 +199,7 @@ class MiniPlayerApp {
 
     if (this.isMicroMode) {
       targetWidth = 310;
-      targetHeight = 104;
+      targetHeight = this.showSearch ? 142 : 104;
     } else if (!this.showVideo && !this.showSearch) {
       targetWidth = 320;
       targetHeight = 185;
@@ -200,6 +218,20 @@ class MiniPlayerApp {
     if ((window as any).pywebview?.api?.resize_widget) {
       (window as any).pywebview.api.resize_widget(targetWidth, targetHeight);
     }
+  }
+
+  private toggleAutoplay() {
+    this.autoplay = !this.autoplay;
+    this.updateAutoplayUI();
+    this.savePreferences();
+  }
+
+  private updateAutoplayUI() {
+    if (!this.autoplayBtn) return;
+    this.autoplayBtn.classList.toggle('active', this.autoplay);
+    this.autoplayBtn.title = this.autoplay
+      ? 'Reproduccion continua activada: reproducir recomendaciones automaticamente (A)'
+      : 'Reproduccion continua desactivada (A)';
   }
 
   private initYouTube() {
@@ -536,6 +568,27 @@ class MiniPlayerApp {
       this.syncWidgetSize();
     });
 
+    this.hideUrlBtn?.addEventListener('click', () => {
+      this.showSearch = false;
+      this.applyVisibilityStates();
+      this.savePreferences();
+    });
+
+    this.copyUrlBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.copyCurrentUrl();
+    });
+
+    this.trackTitle.addEventListener('click', () => {
+      if (this.currentTrack) {
+        this.copyCurrentUrl();
+      }
+    });
+
+    this.autoplayBtn?.addEventListener('click', () => {
+      this.toggleAutoplay();
+    });
+
     // Toggle Results Drawer
     this.toggleResultsBtn.addEventListener('click', () => {
       const isVisible = this.resultsDrawer.style.display === 'flex';
@@ -594,6 +647,14 @@ class MiniPlayerApp {
 
     // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
+      if (e.code === 'Escape' && this.showSearch) {
+        this.urlInput.blur();
+        this.showSearch = false;
+        this.applyVisibilityStates();
+        this.savePreferences();
+        return;
+      }
+
       if (e.target instanceof HTMLInputElement) return;
 
       if (e.code === 'Space') {
@@ -601,13 +662,19 @@ class MiniPlayerApp {
         this.togglePlay();
       } else if (e.code === 'KeyV') {
         this.toggleVideoBtn.click();
-      } else if (e.key === '/') {
+      } else if (e.key === '/' || (e.ctrlKey && e.code === 'KeyL')) {
         e.preventDefault();
         if (!this.showSearch) {
-          this.toggleSearchBtn.click();
-        } else {
-          this.urlInput.focus();
+          this.showSearch = true;
+          this.applyVisibilityStates();
+          this.savePreferences();
         }
+        this.urlInput.focus();
+        this.urlInput.select();
+      } else if (e.code === 'KeyA') {
+        this.toggleAutoplay();
+      } else if (e.code === 'KeyC') {
+        this.copyCurrentUrl();
       } else if (e.code === 'KeyM') {
         this.toggleMicroBtn.click();
       } else if (e.code === 'ArrowRight') {
@@ -652,10 +719,41 @@ class MiniPlayerApp {
     }
   }
 
-  private playNext() {
+  private async playNext() {
     const nextTrack = this.queueManager.next();
     if (nextTrack) {
       this.playTrack(nextTrack);
+      return;
+    }
+
+    if (this.autoplay) {
+      if (this.relatedTracks.length > 0) {
+        const nextRelated = this.relatedTracks.shift()!;
+        this.queueManager.append(nextRelated);
+        const trackToPlay = this.queueManager.next();
+        if (trackToPlay) {
+          this.playTrack(trackToPlay);
+          return;
+        }
+      }
+
+      if (this.currentTrack?.id) {
+        this.statusMessage.textContent = 'Buscando siguiente cancion recomendada...';
+        try {
+          const res = await fetch(`/api/related/${this.currentTrack.id}`);
+          const data = await res.json();
+          if (Array.isArray(data.results) && data.results.length > 0) {
+            this.relatedTracks = data.results;
+            const nextRelated = this.relatedTracks.shift()!;
+            this.queueManager.append(nextRelated);
+            const trackToPlay = this.queueManager.next();
+            if (trackToPlay) {
+              this.playTrack(trackToPlay);
+              return;
+            }
+          }
+        } catch (_) {}
+      }
     }
   }
 
@@ -751,6 +849,10 @@ class MiniPlayerApp {
     this.progressBar.style.width = '0%';
     this.seekSlider.value = '0';
 
+    if (this.copyUrlBtn) {
+      this.copyUrlBtn.style.display = 'inline-flex';
+    }
+
     if (this.player && this.isPlayerReady) {
       this.player.loadVideoById({
         videoId: track.id,
@@ -765,6 +867,52 @@ class MiniPlayerApp {
         artist: track.artist,
         artwork: [{ src: track.thumbnail, sizes: '128x128', type: 'image/jpeg' }],
       });
+    }
+
+    this.fetchRelated(track.id);
+  }
+
+  private copyCurrentUrl() {
+    if (!this.currentTrack || !this.currentTrack.id) return;
+    const url = `https://www.youtube.com/watch?v=${this.currentTrack.id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      if (this.copyUrlBtn) {
+        this.copyUrlBtn.title = 'Enlace copiado!';
+        setTimeout(() => {
+          if (this.copyUrlBtn) {
+            this.copyUrlBtn.title = 'Copiar enlace de YouTube (C)';
+          }
+        }, 2000);
+      }
+      this.statusMessage.textContent = 'Enlace de YouTube copiado al portapapeles.';
+      if (this.resultsDrawer.style.display !== 'flex') {
+        this.resultsDrawer.style.display = 'flex';
+        this.syncWidgetSize();
+        setTimeout(() => {
+          if (this.statusMessage.textContent === 'Enlace de YouTube copiado al portapapeles.') {
+            this.resultsDrawer.style.display = 'none';
+            this.syncWidgetSize();
+          }
+        }, 2000);
+      }
+    }).catch((err) => {
+      console.warn('[WARNING] Failed to copy URL:', err);
+    });
+  }
+
+  private async fetchRelated(videoId: string) {
+    if (!videoId || this.isFetchingRelated) return;
+    this.isFetchingRelated = true;
+    try {
+      const res = await fetch(`/api/related/${videoId}`);
+      const data = await res.json();
+      if (Array.isArray(data.results) && data.results.length > 0) {
+        this.relatedTracks = data.results;
+      }
+    } catch (err) {
+      console.warn('[WARNING] Failed to fetch related tracks:', err);
+    } finally {
+      this.isFetchingRelated = false;
     }
   }
 

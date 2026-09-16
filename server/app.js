@@ -57,6 +57,7 @@ export async function buildApp(options = {}) {
   const searchCache = new LRUCache(options.cacheSize ?? 50, options.cacheTtl ?? 10 * 60 * 1000);
   const infoCache = new LRUCache(options.cacheSize ?? 50, options.cacheTtl ?? 10 * 60 * 1000);
   const playlistCache = new LRUCache(options.cacheSize ?? 30, options.cacheTtl ?? 10 * 60 * 1000);
+  const relatedCache = new LRUCache(options.cacheSize ?? 50, options.cacheTtl ?? 10 * 60 * 1000);
 
   fastify.get('/api/health', async () => {
     return {
@@ -253,6 +254,50 @@ export async function buildApp(options = {}) {
     }
   });
 
+  fastify.get('/api/related/:id', async (req, reply) => {
+    const { id } = req.params;
+    if (!id) {
+      return reply.status(400).send({ error: 'Missing video id' });
+    }
+
+    const cacheKey = `rel:${id}`;
+    const cached = relatedCache.get(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const yt = await getYt();
+      const info = await yt.getInfo(id);
+      const results = [];
+
+      for (const v of info?.watch_next_feed || []) {
+        const vid = v.id || v.content_id;
+        if (!vid || vid === id) continue;
+
+        const title = v.title?.text || v.title || v.metadata?.title?.text || 'Untitled Track';
+        const artist = v.author?.name || v.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts?.[0]?.text?.text || v.short_byline_text?.text || 'YouTube';
+        const durSeconds = typeof v.duration?.seconds === 'number' ? v.duration.seconds : parseDuration(v.duration).seconds;
+        const durText = v.duration?.text || formatSeconds(durSeconds);
+        const thumb = v.thumbnails?.[0]?.url || v.content_image?.image?.[0]?.url || `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+
+        results.push({
+          id: vid,
+          title,
+          artist,
+          duration: durSeconds,
+          durationText: durText,
+          thumbnail: thumb,
+        });
+      }
+
+      const payload = { id, results };
+      relatedCache.set(cacheKey, payload);
+      return payload;
+    } catch (err) {
+      console.error(`[ERROR] Related fetch error for ${id}:`, err.message);
+      return { id, results: [] };
+    }
+  });
+
   let pendingAuth = null;
 
   fastify.get('/api/auth/status', async () => {
@@ -346,5 +391,5 @@ export async function buildApp(options = {}) {
     return reply.status(404).send({ error: 'Not found' });
   });
 
-  return { fastify, searchCache, infoCache, playlistCache, getYt };
+  return { fastify, searchCache, infoCache, playlistCache, relatedCache, getYt };
 }

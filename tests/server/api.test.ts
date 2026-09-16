@@ -89,6 +89,31 @@ describe('server/app - Fastify API routes', () => {
           },
         ],
       }),
+      getInfo: vi.fn().mockResolvedValue({
+        watch_next_feed: [
+          {
+            id: 'rel1',
+            title: { text: 'Related Song 1' },
+            author: { name: 'Related Artist 1' },
+            duration: { seconds: 200, text: '3:20' },
+            thumbnails: [{ url: 'https://i.ytimg.com/rel1.jpg' }],
+          },
+          {
+            content_id: 'rel2',
+            title: 'Related Song 2',
+            duration: 180,
+          },
+          {
+            // Invalid item without id
+            title: 'No ID Item',
+          },
+          {
+            // Current song itself (should be skipped)
+            id: 'testVid',
+            title: 'Current Song',
+          },
+        ],
+      }),
     };
   });
 
@@ -244,6 +269,35 @@ describe('server/app - Fastify API routes', () => {
     mockYt.getPlaylist.mockRejectedValueOnce(new Error('Playlist not found'));
     const errRes = await fastify.inject({ method: 'GET', url: '/api/playlist/PL_notfound' });
     expect(errRes.statusCode).toBe(500);
+  });
+
+  it('GET /api/related/:id returns related tracks and handles errors and caching', async () => {
+    const { fastify } = await buildApp({
+      ytInstance: mockYt,
+      skipStatic: true,
+    });
+
+    const res = await fastify.inject({ method: 'GET', url: '/api/related/testVid' });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+
+    expect(body.id).toBe('testVid');
+    expect(body.results.length).toBe(2);
+    expect(body.results[0].id).toBe('rel1');
+    expect(body.results[0].title).toBe('Related Song 1');
+    expect(body.results[1].id).toBe('rel2');
+
+    // Caching check
+    const cachedRes = await fastify.inject({ method: 'GET', url: '/api/related/testVid' });
+    expect(cachedRes.statusCode).toBe(200);
+    expect(mockYt.getInfo).toHaveBeenCalledTimes(1);
+
+    // Error fallback
+    mockYt.getInfo.mockRejectedValueOnce(new Error('Related failed'));
+    const errRes = await fastify.inject({ method: 'GET', url: '/api/related/errorVid' });
+    expect(errRes.statusCode).toBe(200);
+    const errBody = JSON.parse(errRes.body);
+    expect(errBody.results).toEqual([]);
   });
 
   it('GET /api/auth/status and POST /api/auth/start flows', async () => {

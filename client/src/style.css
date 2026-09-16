@@ -189,6 +189,28 @@ button,
   line-height: 1;
 }
 
+.hide-url-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-sub);
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 2px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.hide-url-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.1);
+}
+
 /* Collapsible Video Box */
 .video-preview-box {
   width: 100%;
@@ -271,12 +293,42 @@ button,
   flex: 1;
 }
 
+.track-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+
 .track-title {
   font-size: 0.84rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+}
+
+.copy-url-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-sub);
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.copy-url-btn:hover {
+  color: var(--accent);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .track-artist {
@@ -439,6 +491,38 @@ button,
   cursor: pointer;
 }
 
+.autoplay-btn {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  color: var(--text-sub);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.autoplay-btn:hover {
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.autoplay-btn.active {
+  background: rgba(255, 0, 0, 0.14);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.autoplay-btn.active svg {
+  color: var(--accent);
+}
+
 .toggle-results-btn {
   background: transparent;
   border: none;
@@ -539,15 +623,18 @@ button,
   cursor: grabbing;
 }
 
-.mini-player-wrapper.micro-mode .search-collapsible,
+.mini-player-wrapper.micro-mode .search-collapsible.hidden,
 .mini-player-wrapper.micro-mode .video-preview-box,
 .mini-player-wrapper.micro-mode .bottom-strip,
 .mini-player-wrapper.micro-mode .results-drawer,
 .mini-player-wrapper.micro-mode .controls-box,
-.mini-player-wrapper.micro-mode #toggleSearchBtn,
 .mini-player-wrapper.micro-mode #toggleVideoBtn,
 .mini-player-wrapper.micro-mode #accountBtn {
   display: none !important;
+}
+
+.mini-player-wrapper.micro-mode .input-bar {
+  padding: 3px 8px;
 }
 
 .mini-player-wrapper.micro-mode .mini-header {

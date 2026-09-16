@@ -20,8 +20,16 @@ Reproductor de musica de YouTube ultra eficiente y compacto enfocado en minimo u
 - **Buscador instantaneo y URLs**:
   - Busqueda rapida de pistas y artistas mediante la API InnerTube (`youtubei.js`) con cache LRU en memoria.
   - Soporte para pegar URLs directas de videos, shorts, directos o playlists completas.
+- **Reproduccion Continua / Autoplay Inteligente**:
+  - Al terminar una pista o playlist, el reproductor consulta las recomendaciones relacionadas de YouTube (`/api/related/:id`) y continua reproduciendo sin interrupciones, replicando la experiencia nativa de YouTube Music.
+  - Alternable mediante el boton dedicado `Auto` en la barra inferior o con el atajo de teclado `A`.
+- **Control Flexible de la Barra de URL y Busqueda**:
+  - Posibilidad de mostrar u ocultar la barra de entrada de URL en cualquier momento con el boton de cabecera (`/`), el boton de cierre integrado en la propia barra o la tecla `Escape`.
+  - Copia rapida del enlace oficial de YouTube de la cancion actual mediante el boton al lado del titulo o con el atajo `C`.
+  - Compatible tanto en modo estandar como en modo micro-pildora, ajustando automaticamente las dimensiones de la ventana.
 - **Suite de Pruebas Automatizadas**:
   - Cobertura de codigo superior al 96% implementada con Vitest y `@vitest/coverage-v8`.
+  - Simulacion interactiva de usuario completa (`pnpm test:user`) con 22 comprobaciones integradas.
 
 ---
 
@@ -29,9 +37,12 @@ Reproductor de musica de YouTube ultra eficiente y compacto enfocado en minimo u
 
 - `Espacio`: Reproducir / Pausar
 - `V`: Mostrar / Ocultar video
-- `/`: Enfocar o abrir barra de busqueda
+- `/` o `Ctrl+L`: Mostrar / Enfocar barra de busqueda o URL
+- `Escape`: Ocultar barra de busqueda o URL
+- `A`: Activar / Desactivar reproduccion continua (Autoplay)
+- `C`: Copiar enlace de YouTube de la pista actual
 - `M`: Alternar modo micro-pildora
-- `N`: Siguiente cancion
+- `N`: Siguiente cancion (o siguiente recomendada si autoplay esta activo)
 - `P`: Cancion anterior
 - `Flecha Derecha`: Adelantar 5 segundos
 - `Flecha Izquierda`: Rebobinar 5 segundos

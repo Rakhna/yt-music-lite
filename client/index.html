@@ -20,7 +20,7 @@
 
       <!-- Quick Visibility Toggles -->
       <div class="toolbar-actions">
-        <button id="toggleSearchBtn" class="tool-btn active" title="Mostrar/Ocultar buscador (/)">
+        <button id="toggleSearchBtn" class="tool-btn active" title="Mostrar/Ocultar barra de URL y búsqueda (/)">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
             <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
           </svg>
@@ -91,7 +91,12 @@
           <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
         </svg>
         <input type="text" id="urlInput" placeholder="Pega enlace de YouTube o busca..." autocomplete="off" spellcheck="false">
-        <button id="clearInputBtn" class="clear-icon" style="display: none;">&times;</button>
+        <button id="clearInputBtn" class="clear-icon" title="Limpiar texto" style="display: none;">&times;</button>
+        <button id="hideUrlBtn" class="hide-url-btn" title="Ocultar barra de URL (Esc o /)">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -112,7 +117,14 @@
       <div class="track-info-row">
         <img id="miniThumb" src="/icon.svg" class="mini-thumb" alt="Cover">
         <div class="track-info">
-          <div id="trackTitle" class="track-title">Sin reproduccion</div>
+          <div class="track-title-row">
+            <div id="trackTitle" class="track-title" title="Clic para copiar enlace">Sin reproduccion</div>
+            <button id="copyUrlBtn" class="copy-url-btn" title="Copiar enlace de YouTube (C)" style="display: none;">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor">
+                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+              </svg>
+            </button>
+          </div>
           <div id="trackArtist" class="track-artist">Listo</div>
         </div>
       </div>
@@ -153,7 +165,7 @@
         </button>
       </div>
 
-      <!-- Bottom Mini Options (Volume & Results Drawer) -->
+      <!-- Bottom Mini Options (Volume, Autoplay & Results Drawer) -->
       <div class="bottom-strip">
         <div class="volume-group">
           <button id="muteBtn" class="mute-btn" title="Silenciar (M)">
@@ -162,6 +174,13 @@
           </button>
           <input type="range" id="volumeSlider" class="vol-slider" min="0" max="100" value="80">
         </div>
+
+        <button id="autoplayBtn" class="autoplay-btn active" title="Autoplay activado: reproducir recomendaciones automaticamente (A)">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+            <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+          </svg>
+          <span>Auto</span>
+        </button>
 
         <button id="toggleResultsBtn" class="toggle-results-btn" title="Mostrar/ocultar resultados">
           <span id="resultsCountText">Resultados</span>

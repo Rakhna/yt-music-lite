@@ -205,4 +205,29 @@ describe('client/utils - QueueManager', () => {
     qm.resetErrorCount();
     expect(qm.errorCount).toBe(0);
   });
+
+  it('appends unique tracks and checks hasNext', () => {
+    qm.setQueue([sampleTracks[0]]);
+    expect(qm.length).toBe(1);
+    expect(qm.hasNext()).toBe(false);
+
+    // Appending a duplicate track is ignored
+    const addedDup = qm.append(sampleTracks[0]);
+    expect(addedDup).toBe(false);
+    expect(qm.length).toBe(1);
+
+    // Appending a new track succeeds
+    const addedNew = qm.append(sampleTracks[1]);
+    expect(addedNew).toBe(true);
+    expect(qm.length).toBe(2);
+    expect(qm.hasNext()).toBe(true);
+
+    // Appending invalid track
+    expect(qm.append({} as any)).toBe(false);
+
+    // appendTracks adds multiple
+    const count = qm.appendTracks([sampleTracks[1], sampleTracks[2]]);
+    expect(count).toBe(1); // Only sampleTracks[2] was new
+    expect(qm.length).toBe(3);
+  });
 });

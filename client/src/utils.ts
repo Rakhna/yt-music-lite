@@ -140,6 +140,28 @@ export class QueueManager {
     return { canContinue: true, nextTrack };
   }
 
+  append(track: Track): boolean {
+    if (!track || !track.id) return false;
+    if (this.queue.some((t) => t.id === track.id)) return false;
+    this.queue.push(track);
+    if (this.currentIndex === -1) {
+      this.currentIndex = 0;
+    }
+    return true;
+  }
+
+  appendTracks(tracks: Track[]): number {
+    let added = 0;
+    for (const t of tracks) {
+      if (this.append(t)) added++;
+    }
+    return added;
+  }
+
+  hasNext(): boolean {
+    return this.queue.length > 0 && this.currentIndex < this.queue.length - 1;
+  }
+
   resetErrorCount(): void {
     this.consecutiveErrors = 0;
   }
