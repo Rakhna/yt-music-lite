@@ -180,8 +180,8 @@ class MiniPlayerApp {
     let targetHeight = 440;
 
     if (this.isMicroMode) {
-      targetWidth = 280;
-      targetHeight = 66;
+      targetWidth = 310;
+      targetHeight = 104;
     } else if (!this.showVideo && !this.showSearch) {
       targetWidth = 320;
       targetHeight = 185;
@@ -545,6 +545,8 @@ class MiniPlayerApp {
 
     // Playback buttons
     this.playBtn.addEventListener('click', () => this.togglePlay());
+    this.miniThumb.addEventListener('click', () => this.togglePlay());
+    this.miniThumb.title = 'Reproducir / Pausar (Espacio)';
     this.prevBtn.addEventListener('click', () => this.playPrev());
     this.nextBtn.addEventListener('click', () => this.playNext());
     this.seekBackBtn.addEventListener('click', () => this.seekRelative(-5));

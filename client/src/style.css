@@ -87,6 +87,8 @@ button,
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .dot-indicator {
@@ -95,6 +97,7 @@ button,
   border-radius: 50%;
   background-color: var(--accent);
   box-shadow: 0 0 8px var(--accent);
+  flex-shrink: 0;
 }
 
 .brand-name {
@@ -102,6 +105,7 @@ button,
   font-weight: 700;
   letter-spacing: 0.5px;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .toolbar-actions {
@@ -251,6 +255,13 @@ button,
   object-fit: cover;
   flex-shrink: 0;
   background-color: var(--bg-input);
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.mini-thumb:hover {
+  filter: brightness(1.15);
+  transform: scale(1.03);
 }
 
 .track-info {
@@ -519,8 +530,8 @@ button,
 
 /* MICRO MODE (Ultra Minimalist Pill) */
 .mini-player-wrapper.micro-mode {
-  padding: 6px 8px;
-  gap: 4px;
+  padding: 8px 14px 10px 14px;
+  gap: 6px;
   cursor: grab;
 }
 
@@ -531,21 +542,49 @@ button,
 .mini-player-wrapper.micro-mode .search-collapsible,
 .mini-player-wrapper.micro-mode .video-preview-box,
 .mini-player-wrapper.micro-mode .bottom-strip,
-.mini-player-wrapper.micro-mode .results-drawer {
+.mini-player-wrapper.micro-mode .results-drawer,
+.mini-player-wrapper.micro-mode .controls-box,
+.mini-player-wrapper.micro-mode #toggleSearchBtn,
+.mini-player-wrapper.micro-mode #toggleVideoBtn,
+.mini-player-wrapper.micro-mode #accountBtn {
   display: none !important;
+}
+
+.mini-player-wrapper.micro-mode .mini-header {
+  height: 24px;
 }
 
 .mini-player-wrapper.micro-mode .player-main-strip {
   gap: 6px;
 }
 
-.mini-player-wrapper.micro-mode .controls-box {
-  gap: 6px;
+.mini-player-wrapper.micro-mode .track-info-row {
+  gap: 8px;
 }
 
-.mini-player-wrapper.micro-mode .play-btn {
+.mini-player-wrapper.micro-mode .mini-thumb {
   width: 32px;
   height: 32px;
+}
+
+.mini-player-wrapper.micro-mode .track-title {
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.mini-player-wrapper.micro-mode .track-artist {
+  font-size: 0.70rem;
+  line-height: 1.2;
+}
+
+.mini-player-wrapper.micro-mode .timeline-box {
+  padding: 0 2px;
+  gap: 8px;
+}
+
+.mini-player-wrapper.micro-mode .time-text {
+  font-size: 0.68rem;
+  min-width: 28px;
 }
 
 /* Auth Modal */

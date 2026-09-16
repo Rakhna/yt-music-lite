@@ -314,6 +314,7 @@ def main():
         url=SERVER_URL,
         width=320,
         height=440,
+        min_size=(240, 80),
         frameless=True,
         on_top=True,
         easy_drag=False,
