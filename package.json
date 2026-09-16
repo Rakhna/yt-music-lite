@@ -11,7 +11,8 @@
     "dev": "vite build && node server/index.js",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:user": "python scripts/simulate_user.py"
+    "test:user": "python scripts/simulate_user.py",
+    "test:instance": "python tests/test_single_instance.py"
   },
   "keywords": [],
   "author": "",

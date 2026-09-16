@@ -10,6 +10,10 @@ async function start() {
     console.log(`[INFO] Server running at http://${HOST}:${PORT}`);
     getYt().catch((err) => console.error('[ERROR] Background Innertube init failed:', err));
   } catch (err) {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`[WARNING] Port ${PORT} is already in use by another instance. Exiting.`);
+      process.exit(0);
+    }
     fastify.log.error(err);
     process.exit(1);
   }

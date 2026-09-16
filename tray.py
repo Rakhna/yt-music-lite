@@ -122,6 +122,49 @@ try:
 except Exception as e:
     logger.warning(f"Could not apply WinForms safety patch: {e}")
 
+MUTEX_NAME = "Local\\YTMusicLite_SingleInstance_Mutex_98a72b"
+_single_instance_mutex = None
+
+def check_single_instance():
+    """
+    Enforces single-instance execution using a Windows named mutex.
+    If another instance is already running, restores/focuses the existing
+    window and returns False to indicate the current process should exit.
+    """
+    global _single_instance_mutex
+    if os.environ.get("YT_ALLOW_MULTIPLE") == "1":
+        return True
+
+    if os.name == "nt":
+        ERROR_ALREADY_EXISTS = 183
+        kernel32 = ctypes.windll.kernel32
+        user32 = ctypes.windll.user32
+
+        try:
+            hdesk = user32.OpenInputDesktop(0, False, 0x0100)
+            if hdesk:
+                user32.SetThreadDesktop(hdesk)
+        except Exception:
+            pass
+
+        _single_instance_mutex = kernel32.CreateMutexW(None, False, MUTEX_NAME)
+        last_error = kernel32.GetLastError()
+
+        if last_error == ERROR_ALREADY_EXISTS:
+            logger.warning("[WARNING] Another instance of YT Mini Player is already running.")
+            print("[WARNING] Another instance of YT Mini Player is already running. Exiting duplicate process.")
+            try:
+                hwnd = user32.FindWindowW(None, "YT Mini Player")
+                if hwnd:
+                    user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+                    user32.BringWindowToTop(hwnd)
+                    user32.SetForegroundWindow(hwnd)
+                    logger.info(f"Restored and focused existing window HWND {hwnd}")
+            except Exception as e:
+                logger.debug(f"Could not focus existing window: {e}")
+            return False
+    return True
+
 server_proc = None
 server_log_handle = None
 is_quitting = False
@@ -243,6 +286,10 @@ class WidgetApi:
 
 def main():
     global is_window_visible
+    if not check_single_instance():
+        logger.info("Exiting duplicate instance cleanly.")
+        sys.exit(0)
+
     logger.info("Starting YT Mini Player tray runner")
     ensure_server()
 
@@ -271,6 +318,13 @@ def main():
         global is_window_visible
         w = window_ref[0]
         if w:
+            try:
+                i = wf.BrowserView.instances.get(w.uid)
+                if i:
+                    hwnd = int(i.Handle.ToInt64())
+                    is_window_visible = bool(user32.IsWindowVisible(hwnd))
+            except Exception:
+                pass
             if is_window_visible:
                 w.hide()
                 is_window_visible = False
