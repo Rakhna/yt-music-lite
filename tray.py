@@ -336,26 +336,41 @@ def main():
 
     def on_shown():
         try:
-            if os.name == "nt" and os.path.exists(icon_ico_path):
+            if os.name == "nt":
                 i = wf.BrowserView.instances.get(window.uid)
                 if i:
                     hwnd = int(i.Handle.ToInt64())
-                    hicon_big = user32.LoadImageW(None, icon_ico_path, 1, 32, 32, 0x0010)
-                    hicon_small = user32.LoadImageW(None, icon_ico_path, 1, 16, 16, 0x0010)
-                    if hicon_big:
-                        user32.SetClassLongPtrW(hwnd, -14, hicon_big)   # GCLP_HICON
-                        user32.SendMessageW(hwnd, 0x0080, 1, hicon_big) # ICON_BIG
-                    if hicon_small:
-                        user32.SetClassLongPtrW(hwnd, -34, hicon_small)   # GCLP_HICONSM
-                        user32.SendMessageW(hwnd, 0x0080, 0, hicon_small) # ICON_SMALL
-                    try:
-                        from System.Drawing import Icon
-                        i.Icon = Icon(icon_ico_path)
-                    except Exception:
-                        pass
-                    logger.info("Custom taskbar/window icon applied via SetClassLongPtr, WM_SETICON and Form.Icon")
+                    # 1. Hide from Windows Taskbar (pure desktop widget mode)
+                    GWL_EXSTYLE = -20
+                    WS_EX_TOOLWINDOW = 0x00000080
+                    WS_EX_APPWINDOW = 0x00040000
+                    SWP_NOMOVE = 0x0002
+                    SWP_NOSIZE = 0x0001
+                    SWP_NOZORDER = 0x0004
+                    SWP_FRAMECHANGED = 0x0020
+                    ex_style = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+                    new_ex_style = (ex_style | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW
+                    user32.SetWindowLongW(hwnd, GWL_EXSTYLE, new_ex_style)
+                    user32.SetWindowPos(hwnd, None, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED)
+                    logger.info("Widget successfully hidden from Windows taskbar (pure widget mode)")
+
+                    # 2. Also ensure window and class icons are set to custom icon
+                    if os.path.exists(icon_ico_path):
+                        hicon_big = user32.LoadImageW(None, icon_ico_path, 1, 32, 32, 0x0010)
+                        hicon_small = user32.LoadImageW(None, icon_ico_path, 1, 16, 16, 0x0010)
+                        if hicon_big:
+                            user32.SetClassLongPtrW(hwnd, -14, hicon_big)   # GCLP_HICON
+                            user32.SendMessageW(hwnd, 0x0080, 1, hicon_big) # ICON_BIG
+                        if hicon_small:
+                            user32.SetClassLongPtrW(hwnd, -34, hicon_small)   # GCLP_HICONSM
+                            user32.SendMessageW(hwnd, 0x0080, 0, hicon_small) # ICON_SMALL
+                        try:
+                            from System.Drawing import Icon
+                            i.Icon = Icon(icon_ico_path)
+                        except Exception:
+                            pass
         except Exception as e:
-            logger.warning(f"Could not apply native window icon: {e}")
+            logger.warning(f"Could not configure native window: {e}")
 
     window.events.shown += on_shown
 
