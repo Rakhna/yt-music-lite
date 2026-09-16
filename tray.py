@@ -11,6 +11,13 @@ import pystray
 from PIL import Image
 import webview
 
+# Set explicit Windows AppUserModelID so Windows Taskbar groups under this app and uses its icon instead of pythonw.exe
+if os.name == "nt":
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("rakhna.ytmusiclite.player.1.0")
+    except Exception:
+        pass
+
 PORT = 3000
 SERVER_URL = f"http://127.0.0.1:{PORT}"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -228,14 +235,17 @@ def main():
 
     # Find which icon is selected (defaults to icon3)
     icon_choice = "icon3.png"
+    icon_ico = "icon3.ico"
     pref_file = os.path.join(SCRIPT_DIR, "icon_choice.txt")
     if os.path.exists(pref_file):
         with open(pref_file, "r") as f:
             choice = f.read().strip()
             if choice in ["icon1", "icon2", "icon3"]:
                 icon_choice = f"{choice}.png"
+                icon_ico = f"{choice}.ico"
 
     icon_path = os.path.join(SCRIPT_DIR, "client", "public", "icons", icon_choice)
+    icon_ico_path = os.path.join(SCRIPT_DIR, "client", "public", "icons", icon_ico)
     if os.path.exists(icon_path):
         tray_image = Image.open(icon_path)
     else:
@@ -311,10 +321,24 @@ def main():
             is_window_visible = False
         return False
 
-    window.events.closing += on_closing
+    def on_shown():
+        try:
+            if os.name == "nt" and os.path.exists(icon_ico_path):
+                i = wf.BrowserView.instances.get(window.uid)
+                if i:
+                    hwnd = int(i.Handle.ToInt64())
+                    hicon = windll.user32.LoadImageW(None, icon_ico_path, 1, 0, 0, 0x0010 | 0x0040)
+                    if hicon:
+                        windll.user32.SendMessageW(hwnd, 0x0080, 0, hicon)  # ICON_SMALL
+                        windll.user32.SendMessageW(hwnd, 0x0080, 1, hicon)  # ICON_BIG
+                        logger.info("Custom taskbar/window icon applied via WM_SETICON")
+        except Exception as e:
+            logger.warning(f"Could not apply native window icon: {e}")
+
+    window.events.shown += on_shown
 
     logger.info("Starting webview main loop")
-    webview.start()
+    webview.start(icon=icon_ico_path if os.path.exists(icon_ico_path) else None)
     logger.info("Webview main loop exited")
 
 if __name__ == "__main__":
