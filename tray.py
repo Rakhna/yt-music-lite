@@ -70,6 +70,19 @@ try:
     ]
     user32.SetWindowPos.restype = wintypes.BOOL
 
+    user32.LoadImageW.argtypes = [
+        wintypes.HINSTANCE,
+        wintypes.LPCWSTR,
+        wintypes.UINT,
+        ctypes.c_int,
+        ctypes.c_int,
+        wintypes.UINT,
+    ]
+    user32.LoadImageW.restype = wintypes.HANDLE
+
+    user32.SetClassLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int, wintypes.HANDLE]
+    user32.SetClassLongPtrW.restype = wintypes.HANDLE
+
     HWND_TOPMOST = wintypes.HWND(-1)
     HWND_NOTOPMOST = wintypes.HWND(-2)
 
@@ -327,11 +340,20 @@ def main():
                 i = wf.BrowserView.instances.get(window.uid)
                 if i:
                     hwnd = int(i.Handle.ToInt64())
-                    hicon = windll.user32.LoadImageW(None, icon_ico_path, 1, 0, 0, 0x0010 | 0x0040)
-                    if hicon:
-                        windll.user32.SendMessageW(hwnd, 0x0080, 0, hicon)  # ICON_SMALL
-                        windll.user32.SendMessageW(hwnd, 0x0080, 1, hicon)  # ICON_BIG
-                        logger.info("Custom taskbar/window icon applied via WM_SETICON")
+                    hicon_big = user32.LoadImageW(None, icon_ico_path, 1, 32, 32, 0x0010)
+                    hicon_small = user32.LoadImageW(None, icon_ico_path, 1, 16, 16, 0x0010)
+                    if hicon_big:
+                        user32.SetClassLongPtrW(hwnd, -14, hicon_big)   # GCLP_HICON
+                        user32.SendMessageW(hwnd, 0x0080, 1, hicon_big) # ICON_BIG
+                    if hicon_small:
+                        user32.SetClassLongPtrW(hwnd, -34, hicon_small)   # GCLP_HICONSM
+                        user32.SendMessageW(hwnd, 0x0080, 0, hicon_small) # ICON_SMALL
+                    try:
+                        from System.Drawing import Icon
+                        i.Icon = Icon(icon_ico_path)
+                    except Exception:
+                        pass
+                    logger.info("Custom taskbar/window icon applied via SetClassLongPtr, WM_SETICON and Form.Icon")
         except Exception as e:
             logger.warning(f"Could not apply native window icon: {e}")
 
