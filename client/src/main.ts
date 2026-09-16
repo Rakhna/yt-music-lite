@@ -78,6 +78,10 @@ class MiniPlayerApp {
   private copyCodeBtn!: HTMLButtonElement;
   private authPendingStatus!: HTMLElement;
   private authPollInterval: number | null = null;
+  private remoteUrlText!: HTMLElement;
+  private copyRemoteUrlBtn!: HTMLButtonElement;
+  private remotePollInterval: number | null = null;
+  private remoteStateInterval: number | null = null;
 
   constructor() {
     this.bindDom();
@@ -86,6 +90,7 @@ class MiniPlayerApp {
     this.bindEvents();
     this.setupMediaSession();
     this.setupDrag();
+    this.setupRemoteSync();
   }
 
   private bindDom() {
@@ -101,6 +106,8 @@ class MiniPlayerApp {
     this.authCodeText = document.getElementById('authCodeText')!;
     this.copyCodeBtn = document.getElementById('copyCodeBtn') as HTMLButtonElement;
     this.authPendingStatus = document.getElementById('authPendingStatus')!;
+    this.remoteUrlText = document.getElementById('remoteUrlText')!;
+    this.copyRemoteUrlBtn = document.getElementById('copyRemoteUrlBtn') as HTMLButtonElement;
     this.pinBtn = document.getElementById('pinBtn') as HTMLButtonElement;
     this.closeWidgetBtn = document.getElementById('closeWidgetBtn') as HTMLButtonElement;
     this.searchBarContainer = document.getElementById('searchBarContainer')!;
@@ -476,12 +483,31 @@ class MiniPlayerApp {
       this.savePreferences();
     });
 
-    // Account Modal Toggle
+    // Account & Remote TV Modal Toggle
     this.accountBtn.addEventListener('click', () => {
       const isVisible = this.authModal.style.display === 'flex';
       this.authModal.style.display = isVisible ? 'none' : 'flex';
       if (!isVisible) {
+        fetch('/api/remote/info')
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.url && this.remoteUrlText) {
+              this.remoteUrlText.textContent = data.url;
+            }
+          })
+          .catch(() => {});
         this.startAuthFlow();
+      }
+    });
+
+    this.copyRemoteUrlBtn?.addEventListener('click', () => {
+      const url = this.remoteUrlText.textContent || '';
+      if (url && url !== 'Cargando direccion...') {
+        navigator.clipboard.writeText(url);
+        this.copyRemoteUrlBtn.textContent = 'Copiado!';
+        setTimeout(() => {
+          this.copyRemoteUrlBtn.textContent = 'Copiar';
+        }, 2000);
       }
     });
 
@@ -720,20 +746,25 @@ class MiniPlayerApp {
   }
 
   private async playNext() {
-    const nextTrack = this.queueManager.next();
-    if (nextTrack) {
-      this.playTrack(nextTrack);
-      return;
+    // 1. If queue has an unplayed next track, play it
+    if (this.queueManager.hasNext()) {
+      const nextTrack = this.queueManager.next(false);
+      if (nextTrack) {
+        this.playTrack(nextTrack);
+        return;
+      }
     }
 
+    // 2. If at the end of queue and autoplay is enabled, advance to next related song
     if (this.autoplay) {
-      if (this.relatedTracks.length > 0) {
-        const nextRelated = this.relatedTracks.shift()!;
-        this.queueManager.append(nextRelated);
-        const trackToPlay = this.queueManager.next();
-        if (trackToPlay) {
-          this.playTrack(trackToPlay);
-          return;
+      while (this.relatedTracks.length > 0) {
+        const candidate = this.relatedTracks.shift()!;
+        if (this.queueManager.append(candidate)) {
+          const trackToPlay = this.queueManager.next(false);
+          if (trackToPlay) {
+            this.playTrack(trackToPlay);
+            return;
+          }
         }
       }
 
@@ -744,17 +775,33 @@ class MiniPlayerApp {
           const data = await res.json();
           if (Array.isArray(data.results) && data.results.length > 0) {
             this.relatedTracks = data.results;
-            const nextRelated = this.relatedTracks.shift()!;
-            this.queueManager.append(nextRelated);
-            const trackToPlay = this.queueManager.next();
-            if (trackToPlay) {
-              this.playTrack(trackToPlay);
-              return;
+            while (this.relatedTracks.length > 0) {
+              const candidate = this.relatedTracks.shift()!;
+              if (this.queueManager.append(candidate)) {
+                const trackToPlay = this.queueManager.next(false);
+                if (trackToPlay) {
+                  this.playTrack(trackToPlay);
+                  return;
+                }
+              }
             }
           }
-        } catch (_) {}
+        } catch (err) {
+          console.error('[ERROR] Autoplay related fetch failed:', err);
+        }
       }
     }
+
+    // 3. If autoplay is off and multiple tracks exist, wrap around
+    if (this.queueManager.length > 1) {
+      const firstTrack = this.queueManager.select(0);
+      if (firstTrack) {
+        this.playTrack(firstTrack);
+        return;
+      }
+    }
+
+    this.statusMessage.textContent = 'Fin de la lista. Activa Autoplay (A) para continuar.';
   }
 
   private playPrev() {
@@ -930,6 +977,88 @@ class MiniPlayerApp {
   private updatePlayPauseUI() {
     this.playIcon.style.display = this.isPlaying ? 'none' : 'block';
     this.pauseIcon.style.display = this.isPlaying ? 'block' : 'none';
+  }
+
+  private setupRemoteSync() {
+    this.remotePollInterval = window.setInterval(async () => {
+      try {
+        const res = await fetch('/api/remote/commands');
+        if (!res.ok) return;
+        const data = await res.json();
+        for (const cmd of data.commands || []) {
+          this.executeRemoteCommand(cmd);
+        }
+      } catch (_) {}
+    }, 600);
+
+    this.remoteStateInterval = window.setInterval(() => {
+      this.syncRemoteState();
+    }, 1500);
+  }
+
+  private syncRemoteState() {
+    if (!this.player || !this.isPlayerReady) return;
+    try {
+      const cur = this.player.getCurrentTime() || 0;
+      const dur = this.player.getDuration() || (this.currentTrack?.duration || 0);
+      fetch('/api/remote/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isPlaying: this.isPlaying,
+          currentTrack: this.currentTrack,
+          currentTime: cur,
+          duration: dur,
+          volume: this.volume,
+          isMuted: this.isMuted,
+          autoplay: this.autoplay,
+        }),
+      }).catch(() => {});
+    } catch (_) {}
+  }
+
+  private executeRemoteCommand(cmd: any) {
+    if (!cmd || !cmd.action) return;
+    switch (cmd.action) {
+      case 'play':
+        if (!this.isPlaying) this.togglePlay();
+        break;
+      case 'pause':
+        if (this.isPlaying) this.togglePlay();
+        break;
+      case 'next':
+        this.playNext();
+        break;
+      case 'prev':
+        this.playPrev();
+        break;
+      case 'seek':
+        if (cmd.data?.delta) {
+          this.seekRelative(cmd.data.delta);
+        }
+        break;
+      case 'volume':
+        if (typeof cmd.data?.volume === 'number') {
+          this.volume = cmd.data.volume;
+          this.volumeSlider.value = this.volume.toString();
+          if (this.player && this.isPlayerReady) {
+            this.player.setVolume(this.volume);
+          }
+          this.isMuted = this.volume === 0;
+          this.updateVolumeIcons();
+          this.savePreferences();
+        }
+        break;
+      case 'toggleAutoplay':
+        this.toggleAutoplay();
+        break;
+      case 'playTrack':
+        if (cmd.data && cmd.data.id) {
+          this.queueManager.setQueue([cmd.data], 0);
+          this.playTrack(cmd.data);
+        }
+        break;
+    }
   }
 
   private setupDrag() {

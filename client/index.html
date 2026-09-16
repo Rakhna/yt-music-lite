@@ -67,20 +67,36 @@
     <!-- Auth / Account Modal (Collapsible) -->
     <div id="authModal" class="auth-box" style="display: none;">
       <div class="auth-header">
-        <span id="authBoxTitle">Conectar con Google</span>
+        <span id="authBoxTitle">Dispositivos y Cuenta</span>
         <button id="closeAuthBtn" class="close-btn">&times;</button>
       </div>
       <div id="authContent" class="auth-content">
-        <p class="auth-desc">Vincula tu cuenta en 2 sencillos pasos:</p>
-        <div class="auth-steps">
-          <div>1. Abre <a id="authLink" href="https://www.google.com/device" target="_blank" class="auth-url">google.com/device</a></div>
-          <div>2. Escribe este codigo:</div>
+        <!-- Remote TV Section -->
+        <div class="remote-tv-section">
+          <div class="remote-tv-title">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M21 3H3c-1.1 0-2 .89-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.11-.9-2-2-2zm0 14H3V5h18v12z"/></svg>
+            <span>Control Remoto TV (Desde Celular)</span>
+          </div>
+          <p class="remote-tv-desc">Abre este enlace en tu telefono (conectado al mismo Wi-Fi):</p>
+          <div class="remote-link-box">
+            <span id="remoteUrlText" class="remote-url-text">Cargando direccion...</span>
+            <button id="copyRemoteUrlBtn" class="copy-btn" title="Copiar enlace">Copiar</button>
+          </div>
         </div>
-        <div class="auth-code-box">
-          <span id="authCodeText" class="auth-code">Cargando...</span>
-          <button id="copyCodeBtn" class="copy-btn" title="Copiar codigo">Copiar</button>
+
+        <!-- Google Device Link Section -->
+        <div class="google-auth-section">
+          <p class="auth-desc">Vincular cuenta de YouTube:</p>
+          <div class="auth-steps">
+            <div>1. Abre <a id="authLink" href="https://www.google.com/device" target="_blank" class="auth-url">google.com/device</a></div>
+            <div>2. Escribe este codigo:</div>
+          </div>
+          <div class="auth-code-box">
+            <span id="authCodeText" class="auth-code">Cargando...</span>
+            <button id="copyCodeBtn" class="copy-btn" title="Copiar codigo">Copiar</button>
+          </div>
+          <div id="authPendingStatus" class="auth-status">Esperando confirmacion...</div>
         </div>
-        <div id="authPendingStatus" class="auth-status">Esperando confirmacion...</div>
       </div>
     </div>
 

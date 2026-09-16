@@ -27,9 +27,13 @@ Reproductor de musica de YouTube ultra eficiente y compacto enfocado en minimo u
   - Posibilidad de mostrar u ocultar la barra de entrada de URL en cualquier momento con el boton de cabecera (`/`), el boton de cierre integrado en la propia barra o la tecla `Escape`.
   - Copia rapida del enlace oficial de YouTube de la cancion actual mediante el boton al lado del titulo o con el atajo `C`.
   - Compatible tanto en modo estandar como en modo micro-pildora, ajustando automaticamente las dimensiones de la ventana.
+- **Control Remoto Web para Telefono (Modo TV / Spotify Connect)**:
+  - Permite controlar la musica en la PC desde cualquier smartphone conectado a la misma red Wi-Fi sin necesidad de instalar apps adicionales.
+  - Al abrir el boton de cuenta/dispositivos, la aplicacion detecta tu IP local y genera el enlace directo (ej. `http://192.168.X.X:3000/remote`).
+  - Interfaz web movil optimizada para pausar, pasar canciones (Siguiente), ajustar volumen en tiempo real y buscar cualquier tema en YouTube desde el celular para reproducirlo en la PC.
 - **Suite de Pruebas Automatizadas**:
-  - Cobertura de codigo superior al 96% implementada con Vitest y `@vitest/coverage-v8`.
-  - Simulacion interactiva de usuario completa (`pnpm test:user`) con 22 comprobaciones integradas.
+  - Cobertura de codigo superior al 95% implementada con Vitest y `@vitest/coverage-v8`.
+  - Simulacion interactiva de usuario completa (`pnpm test:user`) con 24 comprobaciones integradas.
 
 ---
 

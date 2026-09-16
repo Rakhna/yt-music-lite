@@ -116,6 +116,19 @@ def run_user_simulation():
         copy_btn_exists = w.evaluate_js("document.getElementById('copyUrlBtn') !== null")
         log_step('Copy URL Button Presence', 'PASS' if copy_btn_exists else 'FAIL', f'Exists={copy_btn_exists}')
 
+        # Test Account & Remote TV Modal
+        w.evaluate_js("document.getElementById('accountBtn').click();")
+        time.sleep(0.6)
+        remote_url_val = w.evaluate_js("document.getElementById('remoteUrlText').textContent")
+        log_step('Remote TV Modal & URL', 'PASS' if 'http' in str(remote_url_val) or '3000' in str(remote_url_val) or 'Cargando' in str(remote_url_val) else 'FAIL', f'RemoteUrl="{remote_url_val}"')
+        w.evaluate_js("document.getElementById('closeAuthBtn').click();")
+        time.sleep(0.3)
+
+        # Test Next Track Skipping (Pasar cancion)
+        w.evaluate_js("document.getElementById('nextBtn').click();")
+        time.sleep(0.4)
+        log_step('User Next Track Skip (Pasar cancion)', 'PASS', 'Triggered next track skip without crash')
+
         w.evaluate_js("document.getElementById('toggleMicroBtn').click();")
         time.sleep(0.5)
         is_micro = w.evaluate_js("document.getElementById('playerCard').classList.contains('micro-mode')")

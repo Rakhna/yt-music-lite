@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>YT Mini - Control Remoto TV</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <meta name="theme-color" content="#0d0e12">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+    :root {
+      --bg-main: #0d0e12;
+      --bg-card: #161820;
+      --bg-input: #20222e;
+      --border: rgba(255, 255, 255, 0.08);
+      --text-main: #ffffff;
+      --text-sub: #a0a4b8;
+      --text-muted: #6b7086;
+      --accent: #ff0033;
+      --accent-glow: rgba(255, 0, 51, 0.3);
+      --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 16px 32px 16px;
+      user-select: none;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Top Header */
+    .remote-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 4px;
+    }
+
+    .remote-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-tv {
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      color: var(--text-sub);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+      transition: background 0.2s ease;
+    }
+
+    .status-dot.offline {
+      background: #ef4444;
+      box-shadow: 0 0 6px #ef4444;
+    }
+
+    /* Main Now Playing Card */
+    .player-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .thumb-wrapper {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      max-height: 220px;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #000;
+      position: relative;
+      border: 1px solid var(--border);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .thumb-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .track-meta {
+      width: 100%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .track-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #fff;
+    }
+
+    .track-artist {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Timeline */
+    .timeline {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .timeline-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .timeline-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      width: 0%;
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    .timeline-times {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Main Playback Controls */
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      width: 100%;
+      padding-top: 4px;
+    }
+
+    .btn-ctrl {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .btn-ctrl:active {
+      transform: scale(0.92);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-play {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 18px var(--accent-glow);
+      transition: transform 0.15s ease;
+    }
+
+    .btn-play:active {
+      transform: scale(0.94);
+    }
+
+    /* Secondary Controls (Volume & Autoplay) */
+    .secondary-strip {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .volume-box {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .vol-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    .vol-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .btn-autoplay {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-sub);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-autoplay.active {
+      background: rgba(255, 0, 51, 0.18);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Search & Queue Section */
+    .search-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .search-input-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 8px 14px;
+    }
+
+    .search-input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 0.88rem;
+      width: 100%;
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .results-list {
+      max-height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .search-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .search-item:active {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .search-item img {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: #000;
+    }
+
+    .search-item-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .search-item-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .search-item-artist {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 22, 30, 0.95);
+      border: 1px solid var(--accent);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      z-index: 100;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="remote-header">
+      <div class="remote-title">
+        <span>YT Mini</span>
+        <span class="badge-tv">Control Remoto TV</span>
+      </div>
+      <div class="status-pill">
+        <span id="statusDot" class="status-dot"></span>
+        <span id="statusText">Conectado</span>
+      </div>
+    </header>
+
+    <!-- Now Playing Card -->
+    <main class="player-card">
+      <div class="thumb-wrapper">
+        <img id="trackThumb" src="/icon.svg" class="thumb-img" alt="Cover">
+      </div>
+
+      <div class="track-meta">
+        <div id="trackTitle" class="track-title">Sin reproduccion</div>
+        <div id="trackArtist" class="track-artist">Esperando PC...</div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="timeline">
+        <div id="timelineBar" class="timeline-bar">
+          <div id="timelineFill" class="timeline-fill"></div>
+        </div>
+        <div class="timeline-times">
+          <span id="currentTime">0:00</span>
+          <span id="totalDuration">0:00</span>
+        </div>
+      </div>
+
+      <!-- Main Controls -->
+      <div class="controls">
+        <button id="prevBtn" class="btn-ctrl" title="Anterior">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        </button>
+
+        <button id="seekBackBtn" class="btn-ctrl" title="Retroceder 5s">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>
+        </button>
+
+        <button id="playBtn" class="btn-play" title="Reproducir / Pausar">
+          <svg id="playIcon" viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <svg id="pauseIcon" viewBox="0 0 24 24" width="30" height="30" fill="currentColor" style="display: none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        </button>
+
+        <button id="seekFwdBtn" class="btn-ctrl" title="Adelantar 5s">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
+        </button>
+
+        <button id="nextBtn" class="btn-ctrl" title="Pasar cancion">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </button>
+      </div>
+
+      <!-- Secondary Controls -->
+      <div class="secondary-strip">
+        <div class="volume-box">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="var(--text-sub)"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+          <input type="range" id="volSlider" class="vol-slider" min="0" max="100" value="80">
+        </div>
+
+        <button id="autoplayBtn" class="btn-autoplay active" title="Autoplay">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+            <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+          </svg>
+          <span>Auto</span>
+        </button>
+      </div>
+    </main>
+
+    <!-- Search / Queue Section -->
+    <section class="search-section">
+      <div class="search-input-box">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="var(--text-sub)">
+          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 14z"/>
+        </svg>
+        <input type="text" id="searchInput" class="search-input" placeholder="Buscar cancion o pegar URL para enviar a PC..." autocomplete="off">
+      </div>
+      <div id="resultsList" class="results-list"></div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    // State
+    let isPlaying = false;
+    let searchTimer = null;
+
+    // Elements
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const trackThumb = document.getElementById('trackThumb');
+    const trackTitle = document.getElementById('trackTitle');
+    const trackArtist = document.getElementById('trackArtist');
+    const timelineFill = document.getElementById('timelineFill');
+    const currentTimeEl = document.getElementById('currentTime');
+    const totalDurationEl = document.getElementById('totalDuration');
+    const playBtn = document.getElementById('playBtn');
+    const playIcon = document.getElementById('playIcon');
+    const pauseIcon = document.getElementById('pauseIcon');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const seekBackBtn = document.getElementById('seekBackBtn');
+    const seekFwdBtn = document.getElementById('seekFwdBtn');
+    const volSlider = document.getElementById('volSlider');
+    const autoplayBtn = document.getElementById('autoplayBtn');
+    const searchInput = document.getElementById('searchInput');
+    const resultsList = document.getElementById('resultsList');
+    const toast = document.getElementById('toast');
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function formatSecs(sec) {
+      sec = Math.floor(sec || 0);
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    async function sendCommand(action, data = null) {
+      try {
+        await fetch('/api/remote/command', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, data })
+        });
+      } catch (e) {
+        console.warn('Command failed:', e);
+      }
+    }
+
+    async function pollState() {
+      try {
+        const res = await fetch('/api/remote/state');
+        if (!res.ok) throw new Error('Offline');
+        const state = await res.json();
+
+        statusDot.classList.remove('offline');
+        statusText.textContent = 'Conectado';
+
+        isPlaying = !!state.isPlaying;
+        playIcon.style.display = isPlaying ? 'none' : 'block';
+        pauseIcon.style.display = isPlaying ? 'block' : 'none';
+
+        if (state.currentTrack) {
+          trackTitle.textContent = state.currentTrack.title || 'Pista de YouTube';
+          trackArtist.textContent = state.currentTrack.artist || 'YouTube';
+          trackThumb.src = state.currentTrack.thumbnail || '/icon.svg';
+        }
+
+        const cur = state.currentTime || 0;
+        const dur = state.duration || 0;
+        currentTimeEl.textContent = formatSecs(cur);
+        totalDurationEl.textContent = formatSecs(dur);
+        if (dur > 0) {
+          timelineFill.style.width = `${Math.min(100, (cur / dur) * 100)}%`;
+        }
+
+        if (typeof state.volume === 'number' && document.activeElement !== volSlider) {
+          volSlider.value = state.volume;
+        }
+
+        autoplayBtn.classList.toggle('active', !!state.autoplay);
+
+      } catch (e) {
+        statusDot.classList.add('offline');
+        statusText.textContent = 'Desconectado';
+      }
+    }
+
+    // Polling interval
+    setInterval(pollState, 1000);
+    pollState();
+
+    // Event Listeners
+    playBtn.addEventListener('click', () => {
+      sendCommand(isPlaying ? 'pause' : 'play');
+      isPlaying = !isPlaying;
+      playIcon.style.display = isPlaying ? 'none' : 'block';
+      pauseIcon.style.display = isPlaying ? 'block' : 'none';
+    });
+
+    nextBtn.addEventListener('click', () => {
+      sendCommand('next');
+      showToast('Pasando a la siguiente cancion...');
+    });
+
+    prevBtn.addEventListener('click', () => {
+      sendCommand('prev');
+    });
+
+    seekBackBtn.addEventListener('click', () => {
+      sendCommand('seek', { delta: -5 });
+    });
+
+    seekFwdBtn.addEventListener('click', () => {
+      sendCommand('seek', { delta: 5 });
+    });
+
+    volSlider.addEventListener('input', () => {
+      sendCommand('volume', { volume: parseInt(volSlider.value, 10) });
+    });
+
+    autoplayBtn.addEventListener('click', () => {
+      sendCommand('toggleAutoplay');
+    });
+
+    // Mobile Search
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim();
+      if (searchTimer) clearTimeout(searchTimer);
+      if (!q) {
+        resultsList.innerHTML = '';
+        return;
+      }
+      searchTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+          const data = await res.json();
+          resultsList.innerHTML = '';
+          (data.results || []).slice(0, 8).forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'search-item';
+            row.innerHTML = `
+              <img src="${item.thumbnail}" alt="" loading="lazy">
+              <div class="search-item-info">
+                <div class="search-item-title">${item.title}</div>
+                <div class="search-item-artist">${item.artist} · ${item.durationText || ''}</div>
+              </div>
+            `;
+            row.addEventListener('click', () => {
+              sendCommand('playTrack', item);
+              showToast(`Enviado a PC: ${item.title}`);
+              searchInput.value = '';
+              resultsList.innerHTML = '';
+            });
+            resultsList.appendChild(row);
+          });
+        } catch (e) {}
+      }, 400);
+    });
+  </script>
+</body>
+</html>

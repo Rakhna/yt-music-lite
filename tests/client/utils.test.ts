@@ -229,5 +229,11 @@ describe('client/utils - QueueManager', () => {
     const count = qm.appendTracks([sampleTracks[1], sampleTracks[2]]);
     expect(count).toBe(1); // Only sampleTracks[2] was new
     expect(qm.length).toBe(3);
+
+    // Non-looping next(false) returns null at end of queue
+    expect(qm.next(false)?.id).toBe('2');
+    expect(qm.next(false)?.id).toBe('3');
+    expect(qm.next(false)).toBeNull(); // Reached end of queue without looping
+    expect(qm.hasNext()).toBe(false);
   });
 });

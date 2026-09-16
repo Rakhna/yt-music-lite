@@ -395,4 +395,70 @@ describe('server/app - Fastify API routes', () => {
     expect(spaRes.statusCode).toBe(200);
     expect(spaRes.headers['content-type']).toContain('text/html');
   });
+
+  it('handles remote TV control endpoints (/api/remote/* and /remote)', async () => {
+    const { fastify } = await buildApp({ ytInstance: mockYt, skipStatic: true });
+
+    // 1. Remote info
+    const infoRes = await fastify.inject({ method: 'GET', url: '/api/remote/info' });
+    expect(infoRes.statusCode).toBe(200);
+    const infoBody = JSON.parse(infoRes.body);
+    expect(infoBody.ip).toBeDefined();
+    expect(infoBody.port).toBe(3000);
+    expect(infoBody.url).toContain('/remote');
+
+    // 2. Remote state (get and set)
+    const initSt = await fastify.inject({ method: 'GET', url: '/api/remote/state' });
+    expect(initSt.statusCode).toBe(200);
+    expect(JSON.parse(initSt.body).isPlaying).toBe(false);
+
+    const updateSt = await fastify.inject({
+      method: 'POST',
+      url: '/api/remote/state',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isPlaying: true, volume: 90, currentTrack: { id: 'track1', title: 'Remote Song' } }),
+    });
+    expect(updateSt.statusCode).toBe(200);
+
+    const checkSt = await fastify.inject({ method: 'GET', url: '/api/remote/state' });
+    const checkBody = JSON.parse(checkSt.body);
+    expect(checkBody.isPlaying).toBe(true);
+    expect(checkBody.volume).toBe(90);
+    expect(checkBody.currentTrack?.title).toBe('Remote Song');
+
+    // 3. Remote command (send and consume)
+    const cmdRes = await fastify.inject({
+      method: 'POST',
+      url: '/api/remote/command',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'next' }),
+    });
+    expect(cmdRes.statusCode).toBe(200);
+    expect(JSON.parse(cmdRes.body).success).toBe(true);
+
+    // Invalid command without action
+    const badCmd = await fastify.inject({
+      method: 'POST',
+      url: '/api/remote/command',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(badCmd.statusCode).toBe(400);
+
+    // Fetch and drain commands
+    const cmdsRes = await fastify.inject({ method: 'GET', url: '/api/remote/commands' });
+    expect(cmdsRes.statusCode).toBe(200);
+    const cmdsBody = JSON.parse(cmdsRes.body);
+    expect(cmdsBody.commands.length).toBe(1);
+    expect(cmdsBody.commands[0].action).toBe('next');
+
+    // Next fetch returns empty
+    const cmdsEmpty = await fastify.inject({ method: 'GET', url: '/api/remote/commands' });
+    expect(JSON.parse(cmdsEmpty.body).commands.length).toBe(0);
+
+    // 4. GET /remote HTML interface
+    const remotePage = await fastify.inject({ method: 'GET', url: '/remote' });
+    expect(remotePage.statusCode).toBe(200);
+    expect(remotePage.headers['content-type']).toContain('text/html');
+  });
 });

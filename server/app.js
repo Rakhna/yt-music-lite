@@ -4,11 +4,24 @@ import fastifyStatic from '@fastify/static';
 import { Innertube } from 'youtubei.js';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { LRUCache, parseDuration, formatSeconds } from './utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+export function getLocalIp() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
 
 export async function buildApp(options = {}) {
   const fastify = Fastify({
@@ -24,7 +37,13 @@ export async function buildApp(options = {}) {
 
   await fastify.register(cors, {
     origin: (origin, cb) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        origin.startsWith('http://192.168.') ||
+        origin.startsWith('http://10.') ||
+        origin.startsWith('http://172.')
+      ) {
         cb(null, true);
         return;
       }
@@ -371,6 +390,71 @@ export async function buildApp(options = {}) {
       console.error('[ERROR] Auth start error:', err.message);
       return reply.status(500).send({ error: err.message });
     }
+  });
+
+  // Mobile Web Remote Control API
+  let remotePlayerState = {
+    isPlaying: false,
+    currentTrack: null,
+    currentTime: 0,
+    duration: 0,
+    volume: 80,
+    isMuted: false,
+    autoplay: true,
+  };
+  let pendingRemoteCommands = [];
+
+  fastify.get('/remote', async (req, reply) => {
+    const distPath = path.resolve(__dirname, '../dist/client/remote.html');
+    const srcPath = path.resolve(__dirname, '../client/remote.html');
+    const remotePath = fs.existsSync(distPath) ? distPath : srcPath;
+    if (fs.existsSync(remotePath)) {
+      return reply.type('text/html').send(fs.readFileSync(remotePath, 'utf8'));
+    }
+    return reply.status(404).send({ error: 'Remote interface not found' });
+  });
+
+  fastify.get('/api/remote/info', async () => {
+    const ip = getLocalIp();
+    const port = options.port || 3000;
+    return {
+      ip,
+      port,
+      url: `http://${ip}:${port}/remote`,
+    };
+  });
+
+  fastify.get('/api/remote/state', async () => {
+    return remotePlayerState;
+  });
+
+  fastify.post('/api/remote/state', async (req) => {
+    if (req.body && typeof req.body === 'object') {
+      remotePlayerState = {
+        ...remotePlayerState,
+        ...req.body,
+      };
+    }
+    return { success: true };
+  });
+
+  fastify.post('/api/remote/command', async (req, reply) => {
+    const { action, data } = req.body || {};
+    if (!action) {
+      return reply.status(400).send({ error: 'Missing action' });
+    }
+    const cmd = { id: Date.now() + Math.random(), action, data };
+    pendingRemoteCommands.push(cmd);
+    if (pendingRemoteCommands.length > 20) {
+      pendingRemoteCommands.shift();
+    }
+    return { success: true, commandId: cmd.id };
+  });
+
+  fastify.get('/api/remote/commands', async () => {
+    const cmds = [...pendingRemoteCommands];
+    pendingRemoteCommands = [];
+    return { commands: cmds };
   });
 
   const distPath = path.resolve(__dirname, '../dist/client');

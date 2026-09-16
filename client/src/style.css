@@ -708,9 +708,59 @@ button,
 .auth-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   font-size: 0.72rem;
   color: var(--text-muted);
+}
+
+.remote-tv-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.remote-tv-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.remote-tv-desc {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.remote-link-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #000;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  gap: 6px;
+}
+
+.remote-url-text {
+  font-size: 0.70rem;
+  font-family: monospace;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.google-auth-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .auth-steps {

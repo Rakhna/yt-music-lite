@@ -112,10 +112,17 @@ export class QueueManager {
     return null;
   }
 
-  next(): Track | null {
+  next(loop = true): Track | null {
     if (this.queue.length === 0) return null;
-    this.currentIndex = (this.currentIndex + 1) % this.queue.length;
-    return this.queue[this.currentIndex];
+    if (this.currentIndex < this.queue.length - 1) {
+      this.currentIndex++;
+      return this.queue[this.currentIndex];
+    }
+    if (loop) {
+      this.currentIndex = 0;
+      return this.queue[0];
+    }
+    return null;
   }
 
   prev(): Track | null {
