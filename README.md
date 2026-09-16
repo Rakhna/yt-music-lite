@@ -38,6 +38,38 @@ Reproductor de musica de YouTube ultra eficiente y compacto enfocado en minimo u
 
 ---
 
+## Opciones de Personalizacion
+
+### 1. Seleccion de Icono del Reproductor y de la Bandeja
+El proyecto incluye tres variantes oficiales de iconos en la carpeta `client/public/icons/`:
+- `icon1`: Diseno clasico magenta con onda de audio.
+- `icon2`: Diseno minimalista circular de disco de vinilo.
+- `icon3`: Diseno moderno degradado con isotipo de reproduccion (predeterminado).
+
+Para elegir el icono deseado:
+1. Crear o editar el archivo `icon_choice.txt` en la raiz del proyecto con una sola linea:
+   ```text
+   icon1
+   ```
+   *(o `icon2` / `icon3` segun su preferencia).*
+2. El lanzador `tray.py` cargara automaticamente el icono elegido para la bandeja del sistema (System Tray).
+3. Para actualizar el acceso directo de su Escritorio con el nuevo icono elegido:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/create_shortcut.ps1
+   ```
+
+### 2. Modos de Visualizacion del Widget
+- **Fijar en primer plano (Always on Top)**: Boton de chincheta (Pin) en la cabecera superior. Mantiene el reproductor siempre por encima de cualquier ventana de trabajo, o lo desfija para comportarse como una ventana estandard.
+- **Modo Micro-Pildora (Atajo: `M`)**: Contrae la interfaz a una barra compacta ultra reducida con controles minimos. Al activarse, todo el cuerpo del reproductor se convierte en area de arrastre (`drag region`).
+- **Alternancia de Video (Atajo: `V`)**: Oculta el contenedor de video manteniendo la reproduccion en segundo plano con resolucion forzada a 144p para optimizar el consumo de GPU.
+- **Alternancia de Busqueda (Atajo: `/`)**: Muestra u oculta la caja de entrada de URLs y busqueda de canciones para una vista aun mas despejada.
+
+### 3. Modo Widget Puro (Sin Barra de Tareas)
+- Por defecto, la aplicacion opera en modo widget flotante de escritorio (`WS_EX_TOOLWINDOW`), permaneciendo visible sobre el fondo o ventanas segun se configure pero **sin ocupar espacio ni mostrar iconos en la barra de tareas de Windows**.
+- Para minimizarlo o restaurarlo rapidamente se utiliza el icono de la bandeja del sistema (System Tray junto al reloj de Windows), haciendo clic izquierdo sobre el icono o seleccionando "Mostrar / Ocultar Widget" en el menu contextual.
+
+---
+
 ## Requisitos
 
 - Node.js (v18 o superior)
