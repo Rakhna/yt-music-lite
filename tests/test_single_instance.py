@@ -60,16 +60,24 @@ else:
         tray._single_instance_mutex = None
 
     # Test 4: Verify Node server handles duplicate instance (EADDRINUSE) cleanly
-    p_node = subprocess.run(
-        ["node", "server/index.js"],
-        cwd=PROJECT_DIR,
-        capture_output=True,
-        text=True
-    )
-    assert p_node.returncode == 0, f"[FAIL] Node duplicate instance should exit with 0, got {p_node.returncode}: {p_node.stderr}"
-    assert "[WARNING] Port 3000 is already in use" in p_node.stderr or "[WARNING] Port 3000 is already in use" in p_node.stdout, \
-        f"[FAIL] Node should warn about EADDRINUSE: stdout={p_node.stdout}, stderr={p_node.stderr}"
-    print("[PASS] Test 4: Node server gracefully handled duplicate instance on port 3000")
+    import socket
+    dummy_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        dummy_sock.bind(("0.0.0.0", 3000))
+        dummy_sock.listen(1)
+        p_node = subprocess.run(
+            ["node", "server/index.js"],
+            cwd=PROJECT_DIR,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        assert p_node.returncode == 0, f"[FAIL] Node duplicate instance should exit with 0, got {p_node.returncode}: {p_node.stderr}"
+        assert "[WARNING] Port 3000 is already in use" in p_node.stderr or "[WARNING] Port 3000 is already in use" in p_node.stdout, \
+            f"[FAIL] Node should warn about EADDRINUSE: stdout={p_node.stdout}, stderr={p_node.stderr}"
+        print("[PASS] Test 4: Node server gracefully handled duplicate instance on port 3000")
+    finally:
+        dummy_sock.close()
 
     print("[INFO] All Single-Instance tests PASSED!")
 

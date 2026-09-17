@@ -6,6 +6,12 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/client'),
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(import.meta.dirname, 'client/index.html'),
+        remote: path.resolve(import.meta.dirname, 'client/remote.html'),
+      },
+    },
   },
   server: {
     port: 5173,

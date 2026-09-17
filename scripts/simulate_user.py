@@ -123,8 +123,47 @@ def run_user_simulation():
         time.sleep(0.6)
         remote_url_val = w.evaluate_js("document.getElementById('remoteUrlText').textContent")
         log_step('Remote TV Modal & URL', 'PASS' if 'http' in str(remote_url_val) or '3000' in str(remote_url_val) or 'Cargando' in str(remote_url_val) else 'FAIL', f'RemoteUrl="{remote_url_val}"')
+
+        # Test TV Pairing Code Section
+        has_cast_box = w.evaluate_js("document.getElementById('castPairingCodeText') !== null")
+        cast_val = w.evaluate_js("document.getElementById('castPairingCodeText').textContent")
+        log_step('TV Pairing Code Section', 'PASS' if has_cast_box else 'FAIL', f'CastCode="{cast_val}"')
         w.evaluate_js("document.getElementById('closeAuthBtn').click();")
         time.sleep(0.3)
+
+        # Test History Drawer
+        w.evaluate_js("document.getElementById('historyBtn').click();")
+        time.sleep(0.5)
+        history_drawer_open = w.evaluate_js("document.getElementById('resultsDrawer').style.display !== 'none'")
+        history_title = w.evaluate_js("document.getElementById('statusMessage')?.textContent || ''")
+        log_step('History Drawer Open', 'PASS' if history_drawer_open and 'Historial' in str(history_title) else 'FAIL', f'Drawer={history_drawer_open}, Title="{history_title}"')
+
+        # Test History Drawer Close
+        w.evaluate_js("document.getElementById('historyBtn').click();")
+        time.sleep(0.3)
+        history_drawer_closed = w.evaluate_js("document.getElementById('resultsDrawer').style.display === 'none'")
+        log_step('History Drawer Close', 'PASS' if history_drawer_closed else 'FAIL', f'Closed={history_drawer_closed}')
+
+        # Test Update Modal Components & Interactive Prompt
+        has_update_modal = w.evaluate_js("document.getElementById('updateModal') !== null")
+        has_btn_now = w.evaluate_js("document.getElementById('btnUpdateNow') !== null")
+        has_btn_later = w.evaluate_js("document.getElementById('btnUpdateLater') !== null")
+        log_step('Update Modal Components', 'PASS' if (has_update_modal and has_btn_now and has_btn_later) else 'FAIL', f'Modal={has_update_modal}, BtnNow={has_btn_now}, BtnLater={has_btn_later}')
+
+        # Test Update Modal Trigger & Dismiss (Mas tarde)
+        w.evaluate_js("""
+            if (window.miniPlayerApp) {
+                window.miniPlayerApp.showUpdateModal({ commitsBehind: 2, summary: 'feat: simulated test update' });
+            }
+        """)
+        time.sleep(0.3)
+        modal_shown = w.evaluate_js("document.getElementById('updateModal').style.display !== 'none'")
+        log_step('Update Modal Display Prompt', 'PASS' if modal_shown else 'FAIL', f'Shown={modal_shown}')
+
+        w.evaluate_js("document.getElementById('btnUpdateLater').click();")
+        time.sleep(0.3)
+        modal_dismissed = w.evaluate_js("document.getElementById('updateModal').style.display === 'none'")
+        log_step('Update Modal Dismiss (Mas tarde)', 'PASS' if modal_dismissed else 'FAIL', f'Dismissed={modal_dismissed}')
 
         # Test Next Track Skipping (Pasar cancion)
         w.evaluate_js("document.getElementById('nextBtn').click();")

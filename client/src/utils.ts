@@ -173,3 +173,71 @@ export class QueueManager {
     this.consecutiveErrors = 0;
   }
 }
+
+export interface HistoryItem extends Track {
+  playedAt: number;
+}
+
+export class HistoryManager {
+  private history: HistoryItem[] = [];
+  private maxItems: number;
+
+  constructor(maxItems = 50, initialHistory: HistoryItem[] = []) {
+    this.maxItems = maxItems;
+    this.history = [...initialHistory];
+  }
+
+  get items(): HistoryItem[] {
+    return [...this.history];
+  }
+
+  get length(): number {
+    return this.history.length;
+  }
+
+  add(track: Track): HistoryItem {
+    if (!track || !track.id) {
+      throw new Error('Invalid track');
+    }
+    // Remove duplicate so it moves to position 0 (most recent)
+    this.history = this.history.filter((item) => item.id !== track.id);
+    const item: HistoryItem = {
+      ...track,
+      playedAt: Date.now(),
+    };
+    this.history.unshift(item);
+    if (this.history.length > this.maxItems) {
+      this.history = this.history.slice(0, this.maxItems);
+    }
+    return item;
+  }
+
+  remove(trackId: string): boolean {
+    const prevLen = this.history.length;
+    this.history = this.history.filter((item) => item.id !== trackId);
+    return this.history.length < prevLen;
+  }
+
+  clear(): void {
+    this.history = [];
+  }
+
+  getMostRecent(): HistoryItem | null {
+    return this.history.length > 0 ? this.history[0] : null;
+  }
+
+  toJSON(): string {
+    return JSON.stringify(this.history);
+  }
+
+  static fromJSON(json: string, maxItems = 50): HistoryManager {
+    try {
+      const parsed = JSON.parse(json);
+      if (Array.isArray(parsed)) {
+        return new HistoryManager(maxItems, parsed);
+      }
+    } catch (_) {}
+    return new HistoryManager(maxItems);
+  }
+}
+

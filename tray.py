@@ -284,6 +284,28 @@ class WidgetApi:
             logger.error(f"close_app failed: {e}", exc_info=True)
         cleanup_server()
 
+    def restart_app(self):
+        global is_quitting
+        is_quitting = True
+        logger.info("Restarting application requested by webview UI")
+        try:
+            cleanup_server()
+            global _single_instance_mutex
+            if _single_instance_mutex:
+                import ctypes
+                ctypes.windll.kernel32.CloseHandle(_single_instance_mutex)
+                _single_instance_mutex = None
+            subprocess.Popen([sys.executable, *sys.argv], cwd=SCRIPT_DIR)
+        except Exception as e:
+            logger.error(f"restart_app failed: {e}", exc_info=True)
+        w = self.window_ref[0]
+        if w:
+            try:
+                w.destroy()
+            except Exception:
+                pass
+        os._exit(0)
+
 def main():
     global is_window_visible
     if not check_single_instance():
@@ -342,6 +364,26 @@ def main():
         except Exception as e:
             logger.error(f"Could not open log file: {e}")
 
+    def check_updates_manual(icon, item=None):
+        def _bg():
+            try:
+                import json
+                req = urllib.request.Request(f"{SERVER_URL}/api/update/check")
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    w = window_ref[0]
+                    if w:
+                        w.show()
+                        w.restore()
+                        if data.get("updateAvailable"):
+                            safe_data = json.dumps(data)
+                            w.evaluate_js(f"window.miniPlayerApp?.showUpdateModal({safe_data})")
+                        else:
+                            w.evaluate_js("alert('YT Mini Player ya esta actualizado a la ultima version.')")
+            except Exception as e:
+                logger.warning(f"Manual update check failed: {e}")
+        threading.Thread(target=_bg, daemon=True).start()
+
     def on_quit(icon, item=None):
         global is_quitting
         is_quitting = True
@@ -355,6 +397,7 @@ def main():
 
     menu = pystray.Menu(
         pystray.MenuItem("Mostrar / Ocultar Widget", toggle_window, default=True),
+        pystray.MenuItem("Buscar actualizaciones...", check_updates_manual),
         pystray.MenuItem("Ver Registro de Logs", open_logs),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Salir", on_quit)

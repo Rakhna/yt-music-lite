@@ -415,6 +415,51 @@
     .toast.show {
       opacity: 1;
     }
+
+    .btn-paste-cast {
+      width: 100%;
+      background: rgba(255, 0, 51, 0.12);
+      border: 1px dashed var(--accent);
+      color: #fff;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 10px 14px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-paste-cast:active {
+      background: rgba(255, 0, 51, 0.28);
+      transform: scale(0.98);
+    }
+
+    .history-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px;
+    }
+
+    .history-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
   </style>
 </head>
 <body>
@@ -493,15 +538,32 @@
       </div>
     </main>
 
+    <!-- Quick Cast Button -->
+    <button id="pasteCastBtn" class="btn-paste-cast" title="Pegar enlace y transmitir">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+      <span>Transmitir Enlace de Canción (Pegar)</span>
+    </button>
+
     <!-- Search / Queue Section -->
     <section class="search-section">
       <div class="search-input-box">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="var(--text-sub)">
-          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 14z"/>
+          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
         </svg>
         <input type="text" id="searchInput" class="search-input" placeholder="Buscar cancion o pegar URL para enviar a PC..." autocomplete="off">
       </div>
       <div id="resultsList" class="results-list"></div>
+    </section>
+
+    <!-- History Section -->
+    <section id="historySection" class="history-section" style="display: none;">
+      <div class="history-header">
+        <div class="history-title">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+          <span>Historial Reciente en PC</span>
+        </div>
+      </div>
+      <div id="historyList" class="results-list"></div>
     </section>
   </div>
 
@@ -532,7 +594,11 @@
     const autoplayBtn = document.getElementById('autoplayBtn');
     const searchInput = document.getElementById('searchInput');
     const resultsList = document.getElementById('resultsList');
+    const pasteCastBtn = document.getElementById('pasteCastBtn');
+    const historySection = document.getElementById('historySection');
+    const historyList = document.getElementById('historyList');
     const toast = document.getElementById('toast');
+    let lastRenderedHistory = '';
 
     function showToast(msg) {
       toast.textContent = msg;
@@ -592,10 +658,51 @@
 
         autoplayBtn.classList.toggle('active', !!state.autoplay);
 
+        if (state.history) {
+          renderRemoteHistory(state.history);
+        }
+
       } catch (e) {
         statusDot.classList.add('offline');
         statusText.textContent = 'Desconectado';
       }
+    }
+
+    function extractYtId(url) {
+      if (!url) return null;
+      const str = url.trim();
+      if (/^[a-zA-Z0-9_-]{11}$/.test(str)) return str;
+      const match = str.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|v\/))([a-zA-Z0-9_-]{11})/i);
+      return match ? match[1] : null;
+    }
+
+    function renderRemoteHistory(historyItems) {
+      if (!historyItems || !historyItems.length) {
+        historySection.style.display = 'none';
+        return;
+      }
+      historySection.style.display = 'block';
+      const historyKey = JSON.stringify(historyItems.map(h => h.id));
+      if (historyKey === lastRenderedHistory) return;
+      lastRenderedHistory = historyKey;
+
+      historyList.innerHTML = '';
+      historyItems.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'search-item';
+        row.innerHTML = `
+          <img src="${item.thumbnail || '/icon.svg'}" alt="" loading="lazy">
+          <div class="search-item-info">
+            <div class="search-item-title">${item.title || 'Pista'}</div>
+            <div class="search-item-artist">${item.artist || 'YouTube'} · ${item.durationText || ''}</div>
+          </div>
+        `;
+        row.addEventListener('click', () => {
+          sendCommand('playTrack', item);
+          showToast(`Reproduciendo: ${item.title}`);
+        });
+        historyList.appendChild(row);
+      });
     }
 
     // Polling interval
@@ -633,6 +740,27 @@
 
     autoplayBtn.addEventListener('click', () => {
       sendCommand('toggleAutoplay');
+    });
+
+    pasteCastBtn.addEventListener('click', async () => {
+      let clipText = '';
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        try {
+          clipText = await navigator.clipboard.readText();
+        } catch (e) {
+          clipText = '';
+        }
+      }
+      if (!clipText) {
+        clipText = prompt('Pega el enlace de YouTube o YouTube Music para transmitir:') || '';
+      }
+      const videoId = extractYtId(clipText);
+      if (videoId) {
+        sendCommand('playTrack', { id: videoId, title: 'Transmitido desde celular', artist: 'YouTube' });
+        showToast('Transmitiendo a PC...');
+      } else if (clipText.trim()) {
+        showToast('Enlace de YouTube no reconocido');
+      }
     });
 
     // Mobile Search

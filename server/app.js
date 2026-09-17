@@ -7,6 +7,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { LRUCache, parseDuration, formatSeconds } from './utils.js';
+import { CastManager } from './cast.js';
+import { checkForUpdates, applyUpdate } from './updater.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -404,6 +406,36 @@ export async function buildApp(options = {}) {
   };
   let pendingRemoteCommands = [];
 
+  let castManager = null;
+  if (options.enableCast !== false) {
+    castManager = new CastManager((action, data) => {
+      const cmd = { id: Date.now() + Math.random(), action, data };
+      pendingRemoteCommands.push(cmd);
+      if (pendingRemoteCommands.length > 20) {
+        pendingRemoteCommands.shift();
+      }
+    }, {
+      dialPort: options.castDialPort || 3001,
+      deviceName: options.castDeviceName || 'YT Mini Player',
+    });
+    castManager.start().catch((err) => {
+      console.warn('[WARNING] Background Cast receiver start failed:', err);
+    });
+  }
+
+  fastify.get('/api/cast/info', async () => {
+    if (!castManager) {
+      return {
+        enabled: false,
+        pairingCode: null,
+        rawPairingCode: null,
+        deviceName: 'YT Mini Player',
+        dialPort: 3001,
+      };
+    }
+    return castManager.getInfo();
+  });
+
   fastify.get('/remote', async (req, reply) => {
     const distPath = path.resolve(__dirname, '../dist/client/remote.html');
     const srcPath = path.resolve(__dirname, '../client/remote.html');
@@ -434,6 +466,9 @@ export async function buildApp(options = {}) {
         ...remotePlayerState,
         ...req.body,
       };
+      if (castManager) {
+        castManager.updatePlayerState(remotePlayerState);
+      }
     }
     return { success: true };
   });
@@ -457,6 +492,24 @@ export async function buildApp(options = {}) {
     return { commands: cmds };
   });
 
+  // Auto-Updater API
+  const updateChecker = options.checkForUpdates || checkForUpdates;
+  const updateApplier = options.applyUpdate || applyUpdate;
+
+  fastify.get('/api/update/check', async () => {
+    return updateChecker();
+  });
+
+  fastify.post('/api/update/apply', async () => {
+    return updateApplier();
+  });
+
+  fastify.addHook('onClose', async () => {
+    if (castManager) {
+      await castManager.stop();
+    }
+  });
+
   const distPath = path.resolve(__dirname, '../dist/client');
   if (fs.existsSync(distPath) && !options.skipStatic) {
     fastify.register(fastifyStatic, {
@@ -475,5 +528,5 @@ export async function buildApp(options = {}) {
     return reply.status(404).send({ error: 'Not found' });
   });
 
-  return { fastify, searchCache, infoCache, playlistCache, relatedCache, getYt };
+  return { fastify, searchCache, infoCache, playlistCache, relatedCache, getYt, castManager };
 }

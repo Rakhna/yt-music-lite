@@ -713,6 +713,49 @@ button,
   color: var(--text-muted);
 }
 
+.cast-tv-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.cast-subtext {
+  font-size: 0.65rem;
+  color: var(--text-sub);
+  line-height: 1.2;
+}
+
+.cast-subtext em {
+  color: var(--text-main);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.drawer-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px;
+}
+
+.clear-history-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-sub);
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.clear-history-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .remote-tv-section {
   display: flex;
   flex-direction: column;
@@ -818,5 +861,105 @@ button,
 ::-webkit-scrollbar-thumb {
   background: var(--bg-hover);
   border-radius: 2px;
+}
+
+/* Update Modal Box */
+.update-modal-box {
+  border-left: 3px solid var(--accent);
+  margin-bottom: 8px;
+}
+
+.update-header-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.update-desc-text {
+  font-size: 0.72rem;
+  color: var(--text-main);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.update-summary-box {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.68rem;
+  color: var(--text-sub);
+  font-family: monospace;
+  white-space: pre-line;
+  max-height: 50px;
+  overflow-y: auto;
+}
+
+.update-loading-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: var(--accent);
+  padding: 4px 0;
+}
+
+.mini-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 0, 85, 0.3);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.update-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.btn-update-sec {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-sub);
+  font-size: 0.7rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn-update-sec:hover {
+  background: var(--bg-hover);
+  color: #fff;
+}
+
+.btn-update-pri {
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-update-pri:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 8px var(--accent-glow);
 }
 

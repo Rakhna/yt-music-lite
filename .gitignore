@@ -6,4 +6,6 @@ __pycache__
 *.pyc
 .DS_Store
 *.log
-
+.node-persist
+graphify-out/
+.graphify_*

@@ -4,6 +4,7 @@ import {
   extractPlaylistId,
   extractYouTubeId,
   QueueManager,
+  HistoryManager,
   Track,
 } from '../../client/src/utils';
 
@@ -235,5 +236,82 @@ describe('client/utils - QueueManager', () => {
     expect(qm.next(false)?.id).toBe('3');
     expect(qm.next(false)).toBeNull(); // Reached end of queue without looping
     expect(qm.hasNext()).toBe(false);
+  });
+});
+
+describe('client/utils - HistoryManager', () => {
+  const sampleTracks: Track[] = [
+    { id: 'track1', title: 'Song 1', artist: 'Artist 1', duration: 180, durationText: '3:00', thumbnail: 'thumb1.jpg' },
+    { id: 'track2', title: 'Song 2', artist: 'Artist 2', duration: 200, durationText: '3:20', thumbnail: 'thumb2.jpg' },
+    { id: 'track3', title: 'Song 3', artist: 'Artist 3', duration: 240, durationText: '4:00', thumbnail: 'thumb3.jpg' },
+  ];
+
+  it('initializes empty or with initial items', () => {
+    const hm = new HistoryManager(10);
+    expect(hm.length).toBe(0);
+    expect(hm.items).toEqual([]);
+    expect(hm.getMostRecent()).toBeNull();
+
+    const hmInit = new HistoryManager(10, [{ ...sampleTracks[0], playedAt: 12345 }]);
+    expect(hmInit.length).toBe(1);
+    expect(hmInit.getMostRecent()?.id).toBe('track1');
+  });
+
+  it('adds tracks, moves duplicate to front, and limits max items', () => {
+    const hm = new HistoryManager(2);
+    hm.add(sampleTracks[0]);
+    expect(hm.length).toBe(1);
+    expect(hm.getMostRecent()?.id).toBe('track1');
+
+    hm.add(sampleTracks[1]);
+    expect(hm.length).toBe(2);
+    expect(hm.getMostRecent()?.id).toBe('track2');
+
+    // Adding track1 again should move track1 to the front without duplicates
+    hm.add(sampleTracks[0]);
+    expect(hm.length).toBe(2);
+    expect(hm.getMostRecent()?.id).toBe('track1');
+    expect(hm.items[1].id).toBe('track2');
+
+    // Adding track3 should exceed maxItems (2), so oldest (track2) is evicted
+    hm.add(sampleTracks[2]);
+    expect(hm.length).toBe(2);
+    expect(hm.items.map((i) => i.id)).toEqual(['track3', 'track1']);
+  });
+
+  it('throws on invalid track addition', () => {
+    const hm = new HistoryManager();
+    expect(() => hm.add({} as any)).toThrow('Invalid track');
+    expect(() => hm.add(null as any)).toThrow('Invalid track');
+  });
+
+  it('removes tracks and clears history', () => {
+    const hm = new HistoryManager();
+    hm.add(sampleTracks[0]);
+    hm.add(sampleTracks[1]);
+
+    expect(hm.remove('non-existent')).toBe(false);
+    expect(hm.remove('track1')).toBe(true);
+    expect(hm.length).toBe(1);
+    expect(hm.items[0].id).toBe('track2');
+
+    hm.clear();
+    expect(hm.length).toBe(0);
+    expect(hm.getMostRecent()).toBeNull();
+  });
+
+  it('serializes to and from JSON', () => {
+    const hm = new HistoryManager(10);
+    hm.add(sampleTracks[0]);
+    const json = hm.toJSON();
+    expect(typeof json).toBe('string');
+
+    const restored = HistoryManager.fromJSON(json);
+    expect(restored.length).toBe(1);
+    expect(restored.getMostRecent()?.id).toBe('track1');
+
+    // Handles corrupt JSON safely
+    const fallback = HistoryManager.fromJSON('invalid json{}');
+    expect(fallback.length).toBe(0);
   });
 });

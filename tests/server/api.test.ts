@@ -460,5 +460,48 @@ describe('server/app - Fastify API routes', () => {
     const remotePage = await fastify.inject({ method: 'GET', url: '/remote' });
     expect(remotePage.statusCode).toBe(200);
     expect(remotePage.headers['content-type']).toContain('text/html');
+
+    // 5. GET /api/cast/info
+    const castInfoRes = await fastify.inject({ method: 'GET', url: '/api/cast/info' });
+    expect(castInfoRes.statusCode).toBe(200);
+    const castInfo = JSON.parse(castInfoRes.body);
+    expect(castInfo.deviceName).toBe('YT Mini Player');
+    expect(castInfo).toHaveProperty('enabled');
+    expect(castInfo).toHaveProperty('pairingCode');
+  });
+
+  it('handles /api/update/check and /api/update/apply endpoints', async () => {
+    const mockCheck = vi.fn().mockResolvedValue({
+      updateAvailable: true,
+      commitsBehind: 2,
+      summary: 'feat: add auto updater',
+    });
+    const mockApply = vi.fn().mockResolvedValue({
+      success: true,
+      message: 'Actualizado con éxito',
+    });
+
+    const { fastify } = await buildApp({
+      checkForUpdates: mockCheck,
+      applyUpdate: mockApply,
+      skipStatic: true,
+      enableCast: false,
+    });
+
+    const checkRes = await fastify.inject({ method: 'GET', url: '/api/update/check' });
+    expect(checkRes.statusCode).toBe(200);
+    const checkData = JSON.parse(checkRes.body);
+    expect(checkData.updateAvailable).toBe(true);
+    expect(checkData.commitsBehind).toBe(2);
+    expect(mockCheck).toHaveBeenCalled();
+
+    const applyRes = await fastify.inject({ method: 'POST', url: '/api/update/apply' });
+    expect(applyRes.statusCode).toBe(200);
+    const applyData = JSON.parse(applyRes.body);
+    expect(applyData.success).toBe(true);
+    expect(applyData.message).toContain('Actualizado con éxito');
+    expect(mockApply).toHaveBeenCalled();
   });
 });
+
+

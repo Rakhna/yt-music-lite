@@ -1,4 +1,4 @@
-import { Track, QueueManager, extractYouTubeId, extractPlaylistId, formatSeconds } from './utils';
+import { Track, QueueManager, HistoryManager, HistoryItem, extractYouTubeId, extractPlaylistId, formatSeconds } from './utils';
 
 declare global {
   interface Window {
@@ -12,6 +12,7 @@ class MiniPlayerApp {
   private isPlayerReady = false;
   private currentTrack: Track | null = null;
   private queueManager = new QueueManager(3);
+  private historyManager = new HistoryManager(50);
   private isPlaying = false;
   private isMuted = false;
   private volume = 80;
@@ -30,12 +31,14 @@ class MiniPlayerApp {
   private showVideo = true;
   private isMicroMode = false;
   private isOnTop = true;
+  private isShowingHistory = false;
 
   // DOM Elements
   private playerCard!: HTMLElement;
   private toggleSearchBtn!: HTMLButtonElement;
   private toggleVideoBtn!: HTMLButtonElement;
   private toggleMicroBtn!: HTMLButtonElement;
+  private historyBtn!: HTMLButtonElement;
   private pinBtn!: HTMLButtonElement;
   private closeWidgetBtn!: HTMLButtonElement;
   private searchBarContainer!: HTMLElement;
@@ -78,10 +81,22 @@ class MiniPlayerApp {
   private copyCodeBtn!: HTMLButtonElement;
   private authPendingStatus!: HTMLElement;
   private authPollInterval: number | null = null;
+  private castPairingCodeText!: HTMLElement;
+  private copyCastCodeBtn!: HTMLButtonElement;
+  private clearHistoryBtn!: HTMLButtonElement;
   private remoteUrlText!: HTMLElement;
   private copyRemoteUrlBtn!: HTMLButtonElement;
   private remotePollInterval: number | null = null;
   private remoteStateInterval: number | null = null;
+  private updateModal!: HTMLElement;
+  private closeUpdateBtn!: HTMLButtonElement;
+  private updateDescText!: HTMLElement;
+  private updateSummaryBox!: HTMLElement;
+  private updateLoadingBox!: HTMLElement;
+  private updateLoadingText!: HTMLElement;
+  private updateActionsRow!: HTMLElement;
+  private btnUpdateLater!: HTMLButtonElement;
+  private btnUpdateNow!: HTMLButtonElement;
 
   constructor() {
     this.bindDom();
@@ -91,13 +106,24 @@ class MiniPlayerApp {
     this.setupMediaSession();
     this.setupDrag();
     this.setupRemoteSync();
+    this.checkAppUpdates();
   }
 
   private bindDom() {
     this.playerCard = document.getElementById('playerCard')!;
+    this.updateModal = document.getElementById('updateModal')!;
+    this.closeUpdateBtn = document.getElementById('closeUpdateBtn') as HTMLButtonElement;
+    this.updateDescText = document.getElementById('updateDescText')!;
+    this.updateSummaryBox = document.getElementById('updateSummaryBox')!;
+    this.updateLoadingBox = document.getElementById('updateLoadingBox')!;
+    this.updateLoadingText = document.getElementById('updateLoadingText')!;
+    this.updateActionsRow = document.getElementById('updateActionsRow')!;
+    this.btnUpdateLater = document.getElementById('btnUpdateLater') as HTMLButtonElement;
+    this.btnUpdateNow = document.getElementById('btnUpdateNow') as HTMLButtonElement;
     this.toggleSearchBtn = document.getElementById('toggleSearchBtn') as HTMLButtonElement;
     this.toggleVideoBtn = document.getElementById('toggleVideoBtn') as HTMLButtonElement;
     this.toggleMicroBtn = document.getElementById('toggleMicroBtn') as HTMLButtonElement;
+    this.historyBtn = document.getElementById('historyBtn') as HTMLButtonElement;
     this.accountBtn = document.getElementById('accountBtn') as HTMLButtonElement;
     this.authModal = document.getElementById('authModal')!;
     this.closeAuthBtn = document.getElementById('closeAuthBtn') as HTMLButtonElement;
@@ -106,6 +132,9 @@ class MiniPlayerApp {
     this.authCodeText = document.getElementById('authCodeText')!;
     this.copyCodeBtn = document.getElementById('copyCodeBtn') as HTMLButtonElement;
     this.authPendingStatus = document.getElementById('authPendingStatus')!;
+    this.castPairingCodeText = document.getElementById('castPairingCodeText')!;
+    this.copyCastCodeBtn = document.getElementById('copyCastCodeBtn') as HTMLButtonElement;
+    this.clearHistoryBtn = document.getElementById('clearHistoryBtn') as HTMLButtonElement;
     this.remoteUrlText = document.getElementById('remoteUrlText')!;
     this.copyRemoteUrlBtn = document.getElementById('copyRemoteUrlBtn') as HTMLButtonElement;
     this.pinBtn = document.getElementById('pinBtn') as HTMLButtonElement;
@@ -173,7 +202,46 @@ class MiniPlayerApp {
 
       this.updateAutoplayUI();
       this.applyVisibilityStates();
+
+      // Restore playback history
+      const savedHistory = localStorage.getItem('mini_play_history');
+      if (savedHistory) {
+        this.historyManager = HistoryManager.fromJSON(savedHistory, 50);
+      }
+
+      // Restore last played track (persistence across restarts)
+      const savedLast = localStorage.getItem('mini_last_track');
+      if (savedLast) {
+        try {
+          const lastTrack = JSON.parse(savedLast);
+          if (lastTrack && lastTrack.id) {
+            this.restoreLastTrack(lastTrack);
+          }
+        } catch (_) {}
+      }
     } catch (_) {}
+  }
+
+  private restoreLastTrack(track: Track) {
+    this.currentTrack = track;
+    this.trackTitle.textContent = track.title;
+    this.trackArtist.textContent = track.artist;
+    this.miniThumb.src = track.thumbnail;
+    this.totalDurationEl.textContent = track.durationText || '0:00';
+    this.queueManager.setQueue([track], 0);
+
+    if (this.copyUrlBtn) {
+      this.copyUrlBtn.style.display = 'inline-flex';
+    }
+
+    if (this.player && this.isPlayerReady) {
+      try {
+        this.player.cueVideoById({
+          videoId: track.id,
+          suggestedQuality: 'small',
+        });
+      } catch (_) {}
+    }
   }
 
   private savePreferences() {
@@ -259,6 +327,14 @@ class MiniPlayerApp {
           onReady: () => {
             this.isPlayerReady = true;
             this.player.setVolume(this.volume);
+            if (this.currentTrack && this.currentTrack.id) {
+              try {
+                this.player.cueVideoById({
+                  videoId: this.currentTrack.id,
+                  suggestedQuality: 'small',
+                });
+              } catch (_) {}
+            }
           },
           onStateChange: (e: any) => this.onStateChange(e),
           onError: (e: any) => {
@@ -386,6 +462,8 @@ class MiniPlayerApp {
   }
 
   private async loadPlaylistById(playlistId: string) {
+    this.isShowingHistory = false;
+    if (this.clearHistoryBtn) this.clearHistoryBtn.style.display = 'none';
     this.statusMessage.textContent = 'Cargando playlist...';
     this.resultsDrawer.style.display = 'flex';
 
@@ -483,6 +561,15 @@ class MiniPlayerApp {
       this.savePreferences();
     });
 
+    // History Drawer Toggle
+    this.historyBtn.addEventListener('click', () => {
+      this.toggleHistoryDrawer();
+    });
+
+    this.clearHistoryBtn.addEventListener('click', () => {
+      this.clearHistory();
+    });
+
     // Account & Remote TV Modal Toggle
     this.accountBtn.addEventListener('click', () => {
       const isVisible = this.authModal.style.display === 'flex';
@@ -496,8 +583,13 @@ class MiniPlayerApp {
             }
           })
           .catch(() => {});
+        this.fetchCastInfo();
         this.startAuthFlow();
       }
+    });
+
+    this.copyCastCodeBtn?.addEventListener('click', () => {
+      this.copyCastCode();
     });
 
     this.copyRemoteUrlBtn?.addEventListener('click', () => {
@@ -525,6 +617,17 @@ class MiniPlayerApp {
           this.copyCodeBtn.textContent = 'Copiar';
         }, 2000);
       }
+    });
+
+    // Update Modal Listeners
+    this.closeUpdateBtn?.addEventListener('click', () => {
+      this.updateModal.style.display = 'none';
+    });
+    this.btnUpdateLater?.addEventListener('click', () => {
+      this.updateModal.style.display = 'none';
+    });
+    this.btnUpdateNow?.addEventListener('click', () => {
+      this.applyAppUpdate();
     });
 
     // Pin on top toggle
@@ -703,6 +806,8 @@ class MiniPlayerApp {
         this.copyCurrentUrl();
       } else if (e.code === 'KeyM') {
         this.toggleMicroBtn.click();
+      } else if (e.code === 'KeyH') {
+        this.toggleHistoryDrawer();
       } else if (e.code === 'ArrowRight') {
         this.seekRelative(5);
       } else if (e.code === 'ArrowLeft') {
@@ -850,6 +955,8 @@ class MiniPlayerApp {
   }
 
   private async performSearch(query: string) {
+    this.isShowingHistory = false;
+    if (this.clearHistoryBtn) this.clearHistoryBtn.style.display = 'none';
     this.resultsDrawer.style.display = 'flex';
     this.statusMessage.textContent = 'Buscando...';
     this.resultsList.innerHTML = '';
@@ -898,6 +1005,17 @@ class MiniPlayerApp {
 
     if (this.copyUrlBtn) {
       this.copyUrlBtn.style.display = 'inline-flex';
+    }
+
+    // Add to history & persist last track
+    this.historyManager.add(track);
+    try {
+      localStorage.setItem('mini_play_history', this.historyManager.toJSON());
+      localStorage.setItem('mini_last_track', JSON.stringify(track));
+    } catch (_) {}
+
+    if (this.isShowingHistory) {
+      this.renderHistory();
     }
 
     if (this.player && this.isPlayerReady) {
@@ -979,6 +1097,89 @@ class MiniPlayerApp {
     this.pauseIcon.style.display = this.isPlaying ? 'block' : 'none';
   }
 
+  private toggleHistoryDrawer() {
+    if (this.resultsDrawer.style.display === 'flex' && this.isShowingHistory) {
+      this.resultsDrawer.style.display = 'none';
+      this.isShowingHistory = false;
+      if (this.clearHistoryBtn) this.clearHistoryBtn.style.display = 'none';
+      this.syncWidgetSize();
+      return;
+    }
+
+    this.isShowingHistory = true;
+    this.resultsDrawer.style.display = 'flex';
+    this.renderHistory();
+    this.syncWidgetSize();
+  }
+
+  private renderHistory() {
+    this.statusMessage.textContent = `Historial (${this.historyManager.length} pistas):`;
+    if (this.clearHistoryBtn) {
+      this.clearHistoryBtn.style.display = this.historyManager.length > 0 ? 'inline-block' : 'none';
+    }
+    this.resultsList.innerHTML = '';
+
+    if (this.historyManager.length === 0) {
+      const emptyMsg = document.createElement('div');
+      emptyMsg.className = 'status-msg';
+      emptyMsg.textContent = 'No hay canciones en el historial aún.';
+      this.resultsList.appendChild(emptyMsg);
+      return;
+    }
+
+    this.historyManager.items.forEach((item) => {
+      const row = this.createTrackRow(item, () => {
+        this.queueManager.setQueue([item], 0);
+        this.playTrack(item);
+      });
+      this.resultsList.appendChild(row);
+    });
+  }
+
+  private clearHistory() {
+    this.historyManager.clear();
+    try {
+      localStorage.removeItem('mini_play_history');
+    } catch (_) {}
+    this.renderHistory();
+  }
+
+  private async fetchCastInfo() {
+    if (this.castPairingCodeText) {
+      this.castPairingCodeText.textContent = 'Cargando código...';
+    }
+    try {
+      const res = await fetch('/api/cast/info');
+      const data = await res.json();
+      if (this.castPairingCodeText) {
+        if (data.pairingCode) {
+          this.castPairingCodeText.textContent = data.pairingCode;
+        } else {
+          this.castPairingCodeText.textContent = 'Generando...';
+        }
+      }
+    } catch (_) {
+      if (this.castPairingCodeText) {
+        this.castPairingCodeText.textContent = 'No disponible';
+      }
+    }
+  }
+
+  private copyCastCode() {
+    const code = this.castPairingCodeText?.textContent?.trim() || '';
+    if (!code || code.includes('Cargando') || code.includes('Generando')) return;
+    navigator.clipboard.writeText(code).then(() => {
+      if (this.copyCastCodeBtn) {
+        this.copyCastCodeBtn.textContent = 'Copiado!';
+        setTimeout(() => {
+          if (this.copyCastCodeBtn) {
+            this.copyCastCodeBtn.textContent = 'Copiar';
+          }
+        }, 2000);
+      }
+    }).catch(() => {});
+  }
+
   private setupRemoteSync() {
     this.remotePollInterval = window.setInterval(async () => {
       try {
@@ -1012,6 +1213,7 @@ class MiniPlayerApp {
           volume: this.volume,
           isMuted: this.isMuted,
           autoplay: this.autoplay,
+          history: this.historyManager.items.slice(0, 20),
         }),
       }).catch(() => {});
     } catch (_) {}
@@ -1035,6 +1237,8 @@ class MiniPlayerApp {
       case 'seek':
         if (cmd.data?.delta) {
           this.seekRelative(cmd.data.delta);
+        } else if (typeof cmd.data?.time === 'number' && this.player && this.isPlayerReady) {
+          this.player.seekTo(cmd.data.time, true);
         }
         break;
       case 'volume':
@@ -1053,9 +1257,27 @@ class MiniPlayerApp {
         this.toggleAutoplay();
         break;
       case 'playTrack':
-        if (cmd.data && cmd.data.id) {
-          this.queueManager.setQueue([cmd.data], 0);
-          this.playTrack(cmd.data);
+        if (cmd.data) {
+          const trackId = cmd.data.id || cmd.data.videoId;
+          if (trackId) {
+            const track: Track = {
+              id: trackId,
+              title: cmd.data.title || 'Video de YouTube',
+              artist: cmd.data.artist || 'YouTube',
+              duration: cmd.data.duration || 0,
+              durationText: cmd.data.durationText || formatSeconds(cmd.data.duration || 0),
+              thumbnail: cmd.data.thumbnail || `https://i.ytimg.com/vi/${trackId}/hqdefault.jpg`,
+            };
+            this.queueManager.setQueue([track], 0);
+            this.playTrack(track);
+            if (typeof cmd.data.position === 'number' && cmd.data.position > 0 && this.player && this.isPlayerReady) {
+              setTimeout(() => {
+                try {
+                  this.player.seekTo(cmd.data.position, true);
+                } catch (_) {}
+              }, 400);
+            }
+          }
         }
         break;
     }
@@ -1078,6 +1300,62 @@ class MiniPlayerApp {
 
     if (this.playerCard) {
       this.playerCard.addEventListener('mousedown', stopDragPropagation);
+    }
+  }
+
+  private async checkAppUpdates() {
+    try {
+      // Delay 1.5s to not block initial audio or UI setup
+      await new Promise((r) => setTimeout(r, 1500));
+      const res = await fetch('/api/update/check');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.updateAvailable) {
+        this.showUpdateModal(data);
+      }
+    } catch (_) {}
+  }
+
+  private showUpdateModal(info: { commitsBehind?: number; summary?: string }) {
+    if (!this.updateModal) return;
+    const count = info.commitsBehind || 1;
+    this.updateDescText.textContent = `Hay una nueva version disponible (${count} cambio${count > 1 ? 's' : ''} nuevo${count > 1 ? 's' : ''}). ¿Deseas actualizar ahora?`;
+    if (info.summary) {
+      this.updateSummaryBox.textContent = info.summary;
+      this.updateSummaryBox.style.display = 'block';
+    } else {
+      this.updateSummaryBox.style.display = 'none';
+    }
+    this.updateLoadingBox.style.display = 'none';
+    this.updateActionsRow.style.display = 'flex';
+    this.updateModal.style.display = 'block';
+  }
+
+  private async applyAppUpdate() {
+    try {
+      this.updateLoadingBox.style.display = 'flex';
+      this.updateLoadingText.textContent = 'Descargando y compilando actualizacion...';
+      this.updateActionsRow.style.display = 'none';
+
+      const res = await fetch('/api/update/apply', { method: 'POST' });
+      const data = await res.json();
+
+      if (data && data.success) {
+        this.updateLoadingText.textContent = '¡Actualizacion completada! Reiniciando...';
+        setTimeout(() => {
+          if ((window as any).pywebview?.api?.restart_app) {
+            (window as any).pywebview.api.restart_app();
+          } else {
+            window.location.reload();
+          }
+        }, 1200);
+      } else {
+        this.updateLoadingText.textContent = `Error: ${data?.error || 'Fallo al actualizar'}`;
+        this.updateActionsRow.style.display = 'flex';
+      }
+    } catch (err: any) {
+      this.updateLoadingText.textContent = `Fallo de conexion: ${err.message || err}`;
+      this.updateActionsRow.style.display = 'flex';
     }
   }
 }
