@@ -269,25 +269,25 @@ class MiniPlayerApp {
   }
 
   public syncWidgetSize() {
-    let targetWidth = 320;
-    let targetHeight = 440;
+    let targetWidth = 336;
+    let targetHeight = 450;
 
     if (this.isMicroMode) {
       targetWidth = 310;
-      targetHeight = this.showSearch ? 142 : 104;
+      targetHeight = this.showSearch ? 148 : 108;
     } else if (!this.showVideo && !this.showSearch) {
-      targetWidth = 320;
-      targetHeight = 185;
+      targetWidth = 336;
+      targetHeight = 238;
     } else if (!this.showVideo) {
-      targetWidth = 320;
-      targetHeight = 225;
+      targetWidth = 336;
+      targetHeight = 280;
     } else if (!this.showSearch) {
-      targetWidth = 320;
-      targetHeight = 400;
+      targetWidth = 336;
+      targetHeight = 415;
     }
 
     if (!this.isMicroMode && this.resultsDrawer && this.resultsDrawer.style.display === 'flex') {
-      targetHeight = Math.min(500, targetHeight + 140);
+      targetHeight = Math.min(540, targetHeight + 140);
     }
 
     if ((window as any).pywebview?.api?.resize_widget) {

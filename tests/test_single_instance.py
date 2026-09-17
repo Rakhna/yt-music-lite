@@ -12,6 +12,8 @@ def run_tests():
     print("[INFO] Starting Single-Instance Verification Tests...")
 
     # Test 1: Check single instance under normal execution
+    TEST_MUTEX = "Local\\YTMusicLite_Test_Mutex_Test"
+    tray.MUTEX_NAME = TEST_MUTEX
     tray._single_instance_mutex = None
 
     # First acquisition
@@ -26,6 +28,7 @@ import sys, os
 PROJECT_DIR = sys.argv[1]
 sys.path.insert(0, PROJECT_DIR)
 import tray
+tray.MUTEX_NAME = "Local\\\\YTMusicLite_Test_Mutex_Test"
 result = tray.check_single_instance()
 if result is False:
     sys.exit(0)
@@ -35,7 +38,8 @@ else:
     p = subprocess.run(
         [sys.executable, "-c", sub_code, PROJECT_DIR],
         capture_output=True,
-        text=True
+        text=True,
+        timeout=10
     )
     assert p.returncode == 0, f"[FAIL] Duplicate process should exit with 0, got {p.returncode}: {p.stderr}"
     assert "[WARNING] Another instance" in p.stdout or "[WARNING] Another instance" in p.stderr, \
@@ -47,7 +51,8 @@ else:
         [sys.executable, "-c", sub_code, PROJECT_DIR],
         env={**os.environ, "YT_ALLOW_MULTIPLE": "1"},
         capture_output=True,
-        text=True
+        text=True,
+        timeout=10
     )
     # With bypass, check_single_instance returns True so sub_code exits with 1
     assert p_bypass.returncode == 1, "[FAIL] Bypass YT_ALLOW_MULTIPLE=1 should allow execution"
@@ -59,23 +64,24 @@ else:
         ctypes.windll.kernel32.CloseHandle(tray._single_instance_mutex)
         tray._single_instance_mutex = None
 
-    # Test 4: Verify Node server handles duplicate instance (EADDRINUSE) cleanly
+    # Test 4: Verify Node server handles duplicate instance (EADDRINUSE) cleanly on test port 3099
     import socket
     dummy_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        dummy_sock.bind(("0.0.0.0", 3000))
+        dummy_sock.bind(("0.0.0.0", 3099))
         dummy_sock.listen(1)
         p_node = subprocess.run(
             ["node", "server/index.js"],
             cwd=PROJECT_DIR,
+            env={**os.environ, "PORT": "3099"},
             capture_output=True,
             text=True,
             timeout=10
         )
         assert p_node.returncode == 0, f"[FAIL] Node duplicate instance should exit with 0, got {p_node.returncode}: {p_node.stderr}"
-        assert "[WARNING] Port 3000 is already in use" in p_node.stderr or "[WARNING] Port 3000 is already in use" in p_node.stdout, \
+        assert "[WARNING] Port 3099 is already in use" in p_node.stderr or "[WARNING] Port 3099 is already in use" in p_node.stdout, \
             f"[FAIL] Node should warn about EADDRINUSE: stdout={p_node.stdout}, stderr={p_node.stderr}"
-        print("[PASS] Test 4: Node server gracefully handled duplicate instance on port 3000")
+        print("[PASS] Test 4: Node server gracefully handled duplicate instance on port 3099")
     finally:
         dummy_sock.close()
 

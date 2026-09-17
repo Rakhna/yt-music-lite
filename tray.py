@@ -409,9 +409,9 @@ def main():
     window = webview.create_window(
         title="YT Mini Player",
         url=SERVER_URL,
-        width=320,
-        height=440,
-        min_size=(240, 80),
+        width=336,
+        height=450,
+        min_size=(260, 80),
         frameless=True,
         on_top=True,
         easy_drag=False,
